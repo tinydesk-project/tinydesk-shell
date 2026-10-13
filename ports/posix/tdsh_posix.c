@@ -18,6 +18,11 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#include <limits.h>
+
+#ifndef PTHREAD_STACK_MIN
+#define PTHREAD_STACK_MIN 8192  /* fallback */
+#endif
 
 static tdsh_posix_config_t s_cfg;
 static tdsh_session_t s_session;
