@@ -18,8 +18,18 @@
   with the new optional `mem_regions` hook in `tdsh_platform_api_t`:
   misaligned, outside or across a region's end, a width the region does
   not allow, or a write to a read-only region is refused with exit status
-  1. Without the hook neither command is registered, so the host and
-  ESP32 builds do not have them. Requested in #1 for the TinyTang port.
+  1. Without the hook neither command is registered (the POSIX and
+  Windows hosts). Requested in #1 for the TinyTang port.
+* **`peek` and `poke` on the ESP32 and the ESP32-C6:** the ESP-IDF port
+  lists its regions. `peek` reads internal RAM, RTC/LP RAM, the mask ROM,
+  PSRAM (ESP32 with PSRAM) and the GPIO, IO_MUX and eFuse registers;
+  `poke` writes only the GPIO output and output-enable registers (`OUT`
+  to `ENABLE1_W1TC`), so RAM the firmware uses cannot be overwritten.
+  Other chips have no table yet and no commands.
+* **Overlapping memory regions:** an access is allowed when one region
+  allows all of it, so a port can list a writable window inside a
+  read-only block (the ESP32 `gpio_out` inside `gpio`). A refusal names
+  the first region that holds the address.
 * **Ports can set the script memory limits:** `TDSH_MAX_VARS`,
   `TDSH_VAR_NAME_MAX`, `TDSH_VAR_VALUE_MAX` and `TDSH_SCRIPT_TASK_STACK`
   can be defined by the build. The defaults are unchanged: 64 variables,

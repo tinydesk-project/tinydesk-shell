@@ -11,6 +11,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "sdkconfig.h"
+#include "soc/reg_base.h"
+#include "soc/soc.h"
+#if CONFIG_SPIRAM
+#include "esp_psram.h"
+#endif
 
 static const char *TAG = "tdsh-port";
 
@@ -192,6 +198,70 @@ static int idf_worker_run(void *context,
     return 0;
 }
 
+/*
+ * Memory regions for peek and poke. peek reads RAM, ROM and a few register
+ * blocks that are always clocked and have no read side effects: GPIO,
+ * IO_MUX and eFuse. poke writes only the GPIO output and output-enable
+ * registers (OUT .. ENABLE1_W1TC, the same on both chips); RAM is read-only
+ * because the firmware lives there. A writable window may lie inside a
+ * read-only block: peek and poke use whichever region allows the access.
+ */
+#define GPIO_OUT_FIRST 0x04u /* GPIO_OUT_REG */
+#define GPIO_OUT_SIZE  0x34u /* to GPIO_ENABLE1_W1TC_REG (0x34) inclusive */
+#define MEM_ALL        (TDSH_MEM_8 | TDSH_MEM_16 | TDSH_MEM_32)
+#define MEM_RO         TDSH_MEM_READONLY
+
+#if CONFIG_IDF_TARGET_ESP32
+#define MEM_REGIONS 9
+static tdsh_mem_region_t s_regions[MEM_REGIONS] = {
+    {"gpio_out", DR_REG_GPIO_BASE + GPIO_OUT_FIRST, GPIO_OUT_SIZE, TDSH_MEM_32},
+    {"gpio", DR_REG_GPIO_BASE, 0x5D0u, TDSH_MEM_32 | MEM_RO},
+    {"io_mux", DR_REG_IO_MUX_BASE, 0x94u, TDSH_MEM_32 | MEM_RO},
+    {"efuse", DR_REG_EFUSE_BASE, 0x200u, TDSH_MEM_32 | MEM_RO},
+    {"dram", SOC_DRAM_LOW, SOC_DRAM_HIGH - SOC_DRAM_LOW, MEM_ALL | MEM_RO},
+    {"rtc_slow", SOC_RTC_DATA_LOW, SOC_RTC_DATA_HIGH - SOC_RTC_DATA_LOW, MEM_ALL | MEM_RO},
+    /* The mask ROM twice: its data on the data bus, byte by byte, and all of
+     * it on the instruction bus, which takes only 32-bit reads. */
+    {"rom_data", SOC_BYTE_ACCESSIBLE_LOW, 0x10000u, MEM_ALL | MEM_RO},
+    {"rom", SOC_IROM_MASK_LOW, 0x60000u, TDSH_MEM_32 | MEM_RO},
+    {"psram", SOC_EXTRAM_DATA_LOW, 0, MEM_ALL | MEM_RO}, /* size set at run time */
+};
+#elif CONFIG_IDF_TARGET_ESP32C6
+#define MEM_REGIONS 7
+static tdsh_mem_region_t s_regions[MEM_REGIONS] = {
+    {"gpio_out", DR_REG_GPIO_BASE + GPIO_OUT_FIRST, GPIO_OUT_SIZE, TDSH_MEM_32},
+    {"gpio", DR_REG_GPIO_BASE, 0x700u, TDSH_MEM_32 | MEM_RO},
+    {"io_mux", DR_REG_IO_MUX_BASE, 0x100u, TDSH_MEM_32 | MEM_RO},
+    {"efuse", DR_REG_EFUSE_BASE, 0x200u, TDSH_MEM_32 | MEM_RO},
+    {"sram", SOC_DRAM_LOW, SOC_DRAM_HIGH - SOC_DRAM_LOW, MEM_ALL | MEM_RO},
+    {"lp_ram", SOC_RTC_DATA_LOW, SOC_RTC_DATA_HIGH - SOC_RTC_DATA_LOW, MEM_ALL | MEM_RO},
+    {"rom", SOC_IROM_MASK_LOW, SOC_IROM_MASK_HIGH - SOC_IROM_MASK_LOW, MEM_ALL | MEM_RO},
+};
+#else
+#define MEM_REGIONS 0 /* no table for this chip yet: no peek and poke */
+#endif
+
+static const tdsh_mem_region_t *idf_mem_regions(void *ctx, size_t *count)
+{
+    (void)ctx;
+#if MEM_REGIONS > 0
+#if CONFIG_IDF_TARGET_ESP32 && CONFIG_SPIRAM
+    /* External RAM is mapped from 0x3F800000, at most 4 MB. */
+    if (esp_psram_is_initialized())
+    {
+        size_t size = esp_psram_get_size();
+        size_t window = SOC_EXTRAM_DATA_HIGH - SOC_EXTRAM_DATA_LOW;
+        s_regions[MEM_REGIONS - 1].size = size < window ? size : window;
+    }
+#endif
+    *count = MEM_REGIONS;
+    return s_regions;
+#else
+    *count = 0;
+    return NULL;
+#endif
+}
+
 static const tdsh_platform_api_t s_idf_platform = {
     .name = "esp-idf/freertos",
     .context = NULL,
@@ -204,6 +274,7 @@ static const tdsh_platform_api_t s_idf_platform = {
     .realloc_fn = idf_realloc,
     .free_fn = idf_free,
     .worker_run = idf_worker_run,
+    .mem_regions = idf_mem_regions,
 };
 
 const tdsh_platform_api_t *tdsh_espidf_platform(void)

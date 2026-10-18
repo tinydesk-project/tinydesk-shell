@@ -45,6 +45,7 @@ idf_component_register(
         sdmmc
         esp_system
         esp_hw_support
+        esp_psram
         heap
         esp_timer
         freertos

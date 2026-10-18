@@ -1,9 +1,10 @@
 /*
  * test_mem.c - peek and poke over a port's memory regions (mem_regions).
  *
- * The "port" lists three arrays of this program as its regions, so every
- * rule can be checked on a PC: widths, alignment, region ends, read-only
- * regions, the value-only output for scripts, dumps and root only.
+ * The "port" lists arrays of this program as its regions, so every rule can
+ * be checked on a PC: widths, alignment, region ends, read-only regions,
+ * overlapping regions, the value-only output for scripts, dumps and root
+ * only.
  */
 #include <inttypes.h>
 #include <stdarg.h>
@@ -28,8 +29,9 @@ static int failures;
 static uint32_t ram[16];                                                 /* 64 bytes, 8/16/32 */
 static uint32_t regs[4];                                                 /* 32-bit only */
 static const uint32_t rom[4] = {0x11223344u, 0x55667788u, 0x99aabbccu, 0xddeeff00u}; /* read-only */
+static uint32_t block[8]; /* read-only, but words 1 and 2 are writable (like GPIO outputs) */
 
-static tdsh_mem_region_t s_regions[3];
+static tdsh_mem_region_t s_regions[5];
 static size_t s_region_count;
 
 static const tdsh_mem_region_t *test_regions(void *context, size_t *count)
@@ -127,7 +129,9 @@ int main(void)
     s_regions[1] = (tdsh_mem_region_t){"regs", (uintptr_t)regs, sizeof(regs), TDSH_MEM_32};
     s_regions[2] = (tdsh_mem_region_t){"rom", (uintptr_t)rom, sizeof(rom),
                                        TDSH_MEM_8 | TDSH_MEM_16 | TDSH_MEM_32 | TDSH_MEM_READONLY};
-    s_region_count = 3;
+    s_regions[3] = (tdsh_mem_region_t){"block", (uintptr_t)block, sizeof(block), TDSH_MEM_32 | TDSH_MEM_READONLY};
+    s_regions[4] = (tdsh_mem_region_t){"out", (uintptr_t)block + 4, 8, TDSH_MEM_32};
+    s_region_count = 5;
     start_core(&s_with_regions);
     CHECK(tdsh_command_find("peek") != NULL && tdsh_command_find("poke") != NULL, "regions: both commands");
     CHECK(tdsh_session_init(&root, "root", false) == 0, "root session");
@@ -196,6 +200,18 @@ int main(void)
     CHECK(run(&root, "poke %s 0x100000000", addr(ram, 8)) == 1 && ram[2] == 0xdeadbeefu, "a value too wide for 32 bits");
     CHECK(run(&root, "poke %s 7", addr(regs, 4)) == 0 && regs[1] == 7, "poke a 32-bit-only region");
     CHECK(run(&root, "poke -w 16 %s 7", addr(regs, 4)) == 1, "poke -w 16 in a 32-bit-only region");
+
+    /* Overlapping regions: an access is allowed when one region allows all
+     * of it, whatever the order of the table. */
+    CHECK(run(&root, "poke %s 5", addr(block, 4)) == 0 && block[1] == 5, "poke the writable window");
+    CHECK(run(&root, "poke %s 6", addr(block, 8)) == 0 && block[2] == 6, "the window's last word");
+    CHECK(run(&root, "poke %s 7", addr(block, 0)) == 1 && block[0] == 0, "the read-only block around it");
+    CHECK(run(&root, "poke %s 7", addr(block, 12)) == 1 && block[3] == 0, "past the window");
+    CHECK(run(&root, "peek %s 8", addr(block, 0)) == 0, "a dump of the whole block");
+    CHECK(run(&root, "peek %s 3", addr(block, 4)) == 0, "a dump from the window past its end");
+    CHECK(strstr(printed(&root, "peek -l"), "out") != NULL, "peek -l lists the window");
+    snprintf(cmd, sizeof(cmd), "poke %s 7", addr(block, 0));
+    CHECK(strstr(printed(&root, cmd), "block is read-only") != NULL, "the refusal names the region");
 
     /* Dumps: 16 bytes per line, each line starts with its address. */
     char expect[256];

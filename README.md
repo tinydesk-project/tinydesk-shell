@@ -203,7 +203,21 @@ gpio             0x2000c000         0x2000c0ff         32        read/write
 0x00000001
 ```
 
-The host and ESP32 builds list no regions, so they have neither command.
+The host builds list no regions, so they have neither command. The ESP32
+and ESP32-C6 firmware list these (`peek -l` shows the addresses):
+
+| Region | What | Widths | Access |
+|---|---|---|---|
+| `gpio_out` | GPIO output and output-enable registers (`OUT` .. `ENABLE1_W1TC`) | 32 | read/write |
+| `gpio`, `io_mux`, `efuse` | the whole register blocks | 32 | read |
+| `dram` (ESP32), `sram` (C6) | internal RAM | 8 16 32 | read |
+| `rtc_slow` (ESP32), `lp_ram` (C6) | RTC / LP RAM | 8 16 32 | read |
+| `rom` | mask ROM (ESP32: instruction bus, 32-bit only; `rom_data` has its data byte by byte) | 32 (C6: 8 16 32) | read |
+| `psram` | ESP32 with PSRAM: the mapped external RAM, up to 4 MB | 8 16 32 | read |
+
+`poke` drives real pins: set GPIO bits with `OUT_W1TS` (block + 0x08) and
+`ENABLE_W1TS` (+ 0x24), clear them with `OUT_W1TC` (+ 0x0c) and
+`ENABLE_W1TC` (+ 0x28).
 
 ## Scripts
 

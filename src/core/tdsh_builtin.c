@@ -1094,8 +1094,41 @@ static uint32_t mem_width_flag(unsigned bytes)
     return TDSH_MEM_32;
 }
 
-/* True when [address, address + length) may be accessed at this width;
- * otherwise prints why not. */
+/* Why region r does not allow the access, or NULL when it does; the text is
+ * printed after "<cmd>: ". */
+static const char *mem_refusal(const tdsh_mem_region_t *r, uint64_t address, uint64_t length, unsigned bytes,
+                               bool write, char *buf, size_t cap)
+{
+    uint64_t start = r->start;
+    uint64_t size = r->size;
+    if (length > size - (address - start))
+    {
+        snprintf(buf, cap, "%" PRIu64 " bytes from 0x%" PRIx64 " cross the end of %s", length, address, mem_name(r));
+        return buf;
+    }
+#if UINTPTR_MAX < UINT64_MAX
+    if (address + length - 1 > UINTPTR_MAX)
+    {
+        snprintf(buf, cap, "%s lies past the end of the address space", mem_name(r));
+        return buf;
+    }
+#endif
+    if ((r->flags & mem_width_flag(bytes)) == 0)
+    {
+        snprintf(buf, cap, "%s does not allow %u-bit access", mem_name(r), bytes * 8);
+        return buf;
+    }
+    if (write && (r->flags & TDSH_MEM_READONLY) != 0)
+    {
+        snprintf(buf, cap, "%s is read-only", mem_name(r));
+        return buf;
+    }
+    return NULL;
+}
+
+/* True when one region allows all of [address, address + length) at this
+ * width (regions may overlap: a writable window inside a read-only block);
+ * otherwise prints why the first region holding the address refuses it. */
 static bool mem_allowed(const char *cmd, uint64_t address, uint64_t length, unsigned bytes, bool write)
 {
     if (address % bytes != 0)
@@ -1105,34 +1138,26 @@ static bool mem_allowed(const char *cmd, uint64_t address, uint64_t length, unsi
     }
     size_t count;
     const tdsh_mem_region_t *r = mem_regions(&count);
+    char why[128];
+    const char *first = NULL;
     for (size_t i = 0; i < count; ++i)
     {
-        uint64_t start = r[i].start;
-        uint64_t size = r[i].size;
-        if (address < start || address - start >= size)
+        if (address < r[i].start || address - r[i].start >= r[i].size)
             continue;
-        if (length > size - (address - start))
+        char buf[128];
+        const char *refusal = mem_refusal(&r[i], address, length, bytes, write, buf, sizeof(buf));
+        if (!refusal)
+            return true;
+        if (!first)
         {
-            printf("%s: %" PRIu64 " bytes from 0x%" PRIx64 " cross the end of %s\n", cmd, length, address, mem_name(&r[i]));
-            return false;
+            snprintf(why, sizeof(why), "%s", refusal);
+            first = why;
         }
-#if UINTPTR_MAX < UINT64_MAX
-        if (address + length - 1 > UINTPTR_MAX)
-            continue; /* a region listed past the end of the address space */
-#endif
-        if ((r[i].flags & mem_width_flag(bytes)) == 0)
-        {
-            printf("%s: %s does not allow %u-bit access\n", cmd, mem_name(&r[i]), bytes * 8);
-            return false;
-        }
-        if (write && (r[i].flags & TDSH_MEM_READONLY) != 0)
-        {
-            printf("%s: %s is read-only\n", cmd, mem_name(&r[i]));
-            return false;
-        }
-        return true;
     }
-    printf("%s: 0x%" PRIx64 " is not in a region this port allows (peek -l)\n", cmd, address);
+    if (first)
+        printf("%s: %s\n", cmd, first);
+    else
+        printf("%s: 0x%" PRIx64 " is not in a region this port allows (peek -l)\n", cmd, address);
     return false;
 }
 

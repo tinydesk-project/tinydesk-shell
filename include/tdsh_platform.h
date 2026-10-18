@@ -72,7 +72,9 @@ typedef struct tdsh_platform_api
      * when tdsh_register_core_builtins() runs, neither command is registered.
      * List only addresses that are safe to access: leave out registers that
      * change state when read (clear-on-read, FIFOs) and peripherals that may be
-     * clock-gated or powered down.
+     * clock-gated or powered down.  Regions may overlap: an access is allowed
+     * when one region allows all of it (a writable window inside a read-only
+     * block).
      */
     const tdsh_mem_region_t *(*mem_regions)(void *context, size_t *count);
 } tdsh_platform_api_t;

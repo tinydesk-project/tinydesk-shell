@@ -18,8 +18,11 @@ synchronously and background scripts report unsupported.
 `peek` and `poke` let root read and write memory, for inspecting RAM and
 peripheral registers. The core registers them only when the port fills in
 the optional `mem_regions` hook and it returns at least one region; the
-POSIX, Windows and ESP-IDF ports leave it null, so they do not have the
-commands. The port lists the regions, the core does the rest: parsing,
+POSIX and Windows ports leave it null, so they do not have the commands.
+The ESP-IDF port lists regions for the ESP32 and the ESP32-C6
+(`idf_mem_regions()` in `ports/esp_idf/components/tdsh/src/tdsh_platform_espidf.c`):
+RAM and ROM read-only, the GPIO, IO_MUX and eFuse registers read-only,
+and only the GPIO output registers writable. The port lists the regions, the core does the rest: parsing,
 checks, the access itself and the output. The addresses below are examples:
 
 ```c
@@ -42,7 +45,10 @@ before `tdsh_register_core_builtins()` runs. Every access is checked before
 memory is touched: the address must be aligned to the width, the whole
 access must lie in one region, the region must allow that width, and `poke`
 must not write a `TDSH_MEM_READONLY` region. Anything else is refused with
-exit status 1.
+exit status 1. Regions may overlap: the access is allowed when any one
+region allows all of it, so a small writable window can sit inside a
+read-only block (list both; the order does not matter). A refusal names
+the first region that holds the address.
 
 What to list:
 
