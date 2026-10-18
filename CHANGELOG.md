@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.6 (2026-10-18)
 
 * **nano with UTF-8 text:** the cursor moved by bytes, so Left, Right,
   Backspace and Delete stopped inside a character such as `é`, `ж` or `日`

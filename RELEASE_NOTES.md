@@ -7,21 +7,25 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
-## New in 0.1.5
+## New in 0.1.6
 
-* **Only root changes the network policy:** `network mode` and
-  `network autowifi` with a value need root; any user still sees them.
-  Before, any user could switch Wi-Fi or the LAN off for the whole board,
-  or make it connect at boot.
-* **Board configuration numbers** are decimal or `0x` hexadecimal, as
-  documented: a leading zero no longer means octal (`08` was rejected,
-  `010` read as 8).
-* **New home:** the code is at github.com/tinydesk-project and the
-  documentation at <https://tinydesk-project.github.io/>.
-  `STANDARDS.md` sets out names, code style, commands, board keys and
-  release rules, also for community ports.
+* **nano with UTF-8 text:** Left, Right, Backspace and Delete move over
+  and delete whole characters, so text such as `Привет` or `日本語` no
+  longer breaks into stray bytes; Up and Down keep the column, and the
+  column shown counts characters (tinydesk #4).
+* **`peek` and `poke`:** root can read RAM, ROM, PSRAM and the GPIO,
+  IO_MUX and eFuse registers of the ESP32 and the ESP32-C6, and write the
+  GPIO output registers; `peek -l` lists what is allowed. Other ports
+  list their own regions through the new `mem_regions` hook (#1).
+* **Scripts on small boards:** ports can set the script memory limits
+  (`TDSH_MAX_VARS`, `TDSH_VAR_NAME_MAX`, `TDSH_VAR_VALUE_MAX`,
+  `TDSH_SCRIPT_TASK_STACK`), and a script that runs out of memory while
+  it loads says so instead of stopping silently (#2, #4).
+* **Builds on macOS** (#5, by @mendeni).
 
-Also since 0.1.0: long command lines wrap and stay editable, and
+Also since 0.1.0: only root changes the network policy, and board
+configuration numbers are decimal or `0x` hexadecimal (0.1.5); long
+command lines wrap and stay editable, and
 `board save` keeps built-in pins (0.1.4); nano follows the terminal's
 size (0.1.3); the SD card at `/sd` (`sd mount`, 0.1.2); `ping -c`, and
 `tdsh.exe`, a native Windows program (`tinydesk-shell-windows-x64.zip`).
