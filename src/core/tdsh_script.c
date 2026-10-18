@@ -224,12 +224,19 @@ static int load_script(uscript_runtime_t *rt, FILE *f)
         }
 
         int rc = runtime_add_line(rt, line, line_no);
+        if (rc == -ENOMEM)
+            printf("uscript: %s:%lu: not enough memory to load the script\n", rt->logical_path, line_no);
+        else if (rc == -E2BIG)
+            printf("uscript: %s: more than %u lines\n", rt->logical_path, (unsigned)USCRIPT_MAX_LINES);
         if (rc != 0)
             return rc;
     }
 
     if (ferror(f))
+    {
+        printf("uscript: %s: read error\n", rt->logical_path);
         return -EIO;
+    }
     return 0;
 }
 

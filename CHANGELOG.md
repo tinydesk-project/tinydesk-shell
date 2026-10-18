@@ -30,6 +30,15 @@
   allows all of it, so a port can list a writable window inside a
   read-only block (the ESP32 `gpio_out` inside `gpio`). A refusal names
   the first region that holds the address.
+* **Scripts that run out of memory while loading say so:**
+  `uscript: <file>:<line>: not enough memory to load the script` (and a
+  message for more than 1024 lines or a read error) instead of returning
+  with status 2 and no output. From #2.
+* **Builds on macOS:** `PTHREAD_STACK_MIN` comes from `<limits.h>`, with
+  a fallback where it is missing (#5, by @mendeni).
+* **Porting guide: file names.** FatFs volumes need long file names with
+  the UTF-8 interface (`FF_LFN_UNICODE` 2); with ANSI/OEM, renaming or
+  moving files with accented names can mix them up (tinydesk #8).
 * **Ports can set the script memory limits:** `TDSH_MAX_VARS`,
   `TDSH_VAR_NAME_MAX`, `TDSH_VAR_VALUE_MAX` and `TDSH_SCRIPT_TASK_STACK`
   can be defined by the build. The defaults are unchanged: 64 variables,

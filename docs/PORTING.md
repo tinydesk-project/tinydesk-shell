@@ -13,6 +13,17 @@ Minimum useful hooks:
 A single-threaded target can leave `worker_run` null: foreground scripts run
 synchronously and background scripts report unsupported.
 
+## File names
+
+The shell passes file names to the filesystem as UTF-8 and shows them as
+UTF-8. A FatFs volume (an SD card) needs long file names with the UTF-8
+interface: `FF_USE_LFN` 1 to 3 and `FF_LFN_UNICODE` 2 in `ffconf.h` (on
+ESP-IDF, `CONFIG_FATFS_LFN_HEAP` and `CONFIG_FATFS_API_ENCODING_UTF_8`,
+which the ESP32 projects set). With the default ANSI/OEM interface, names
+with characters outside the code page (`á`, `ő`) are converted back and
+forth and can end up on the wrong file when files are renamed or moved
+(tinydesk #8).
+
 ## Memory access: peek and poke
 
 `peek` and `poke` let root read and write memory, for inspecting RAM and
