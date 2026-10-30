@@ -210,8 +210,8 @@ int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
 | set | set | Show shell variables |
 | unset | unset <name ...> | Remove shell variables |
 | version | version | Show TinyDesk Shell version |
-| peek | peek -l \| peek [-w 8\|16\|32] <address> [count] | Read memory the port allows (root; only on ports with `mem_regions`: the ESP32 and ESP32-C6 firmware) |
-| poke | poke [-w 8\|16\|32] <address> <value> | Write memory the port allows (root; only on ports with `mem_regions`; on the ESP32 and ESP32-C6 the GPIO output registers) |
+| peek | peek -l \| peek [-w 8\|16\|32] <address> [count] | Read memory the port allows (root; only on ports with `mem_regions`: the ESP32, ESP32-C6 and ESP32-S3 firmware) |
+| poke | poke [-w 8\|16\|32] <address> <value> | Write memory the port allows (root; only on ports with `mem_regions`; on the ESP32 boards the GPIO output registers) |
 | users | users | List TinyDesk Shell users |
 | useradd | useradd <username> | Create a user |
 | userdel | userdel <username> [-f] | Delete a user |

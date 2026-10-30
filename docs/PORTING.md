@@ -30,7 +30,7 @@ forth and can end up on the wrong file when files are renamed or moved
 peripheral registers. The core registers them only when the port fills in
 the optional `mem_regions` hook and it returns at least one region; the
 POSIX and Windows ports leave it null, so they do not have the commands.
-The ESP-IDF port lists regions for the ESP32 and the ESP32-C6
+The ESP-IDF port lists regions for the ESP32, the ESP32-C6 and the ESP32-S3
 (`idf_mem_regions()` in `ports/esp_idf/components/tdsh/src/tdsh_platform_espidf.c`):
 RAM and ROM read-only, the GPIO, IO_MUX and eFuse registers read-only,
 and only the GPIO output registers writable. The port lists the regions, the core does the rest: parsing,

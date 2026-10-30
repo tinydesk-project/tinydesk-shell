@@ -202,7 +202,7 @@ static int idf_worker_run(void *context,
  * Memory regions for peek and poke. peek reads RAM, ROM and a few register
  * blocks that are always clocked and have no read side effects: GPIO,
  * IO_MUX and eFuse. poke writes only the GPIO output and output-enable
- * registers (OUT .. ENABLE1_W1TC, the same on both chips); RAM is read-only
+ * registers (OUT .. ENABLE1_W1TC, the same on all three chips); RAM is read-only
  * because the firmware lives there. A writable window may lie inside a
  * read-only block: peek and poke use whichever region allows the access.
  */
@@ -236,6 +236,19 @@ static tdsh_mem_region_t s_regions[MEM_REGIONS] = {
     {"sram", SOC_DRAM_LOW, SOC_DRAM_HIGH - SOC_DRAM_LOW, MEM_ALL | MEM_RO},
     {"lp_ram", SOC_RTC_DATA_LOW, SOC_RTC_DATA_HIGH - SOC_RTC_DATA_LOW, MEM_ALL | MEM_RO},
     {"rom", SOC_IROM_MASK_LOW, SOC_IROM_MASK_HIGH - SOC_IROM_MASK_LOW, MEM_ALL | MEM_RO},
+};
+#elif CONFIG_IDF_TARGET_ESP32S3
+/* No PSRAM window: the S3 maps external RAM through its MMU at run time. */
+#define MEM_REGIONS 7
+static tdsh_mem_region_t s_regions[MEM_REGIONS] = {
+    {"gpio_out", DR_REG_GPIO_BASE + GPIO_OUT_FIRST, GPIO_OUT_SIZE, TDSH_MEM_32},
+    {"gpio", DR_REG_GPIO_BASE, 0x700u, TDSH_MEM_32 | MEM_RO},
+    {"io_mux", DR_REG_IO_MUX_BASE, 0x100u, TDSH_MEM_32 | MEM_RO},
+    {"efuse", DR_REG_EFUSE_BASE, 0x200u, TDSH_MEM_32 | MEM_RO},
+    {"sram", SOC_DRAM_LOW, SOC_DRAM_HIGH - SOC_DRAM_LOW, MEM_ALL | MEM_RO},
+    {"rtc_slow", SOC_RTC_DATA_LOW, SOC_RTC_DATA_HIGH - SOC_RTC_DATA_LOW, MEM_ALL | MEM_RO},
+    /* The mask ROM on the instruction bus, which takes only 32-bit reads. */
+    {"rom", SOC_IROM_MASK_LOW, SOC_IROM_MASK_HIGH - SOC_IROM_MASK_LOW, TDSH_MEM_32 | MEM_RO},
 };
 #else
 #define MEM_REGIONS 0 /* no table for this chip yet: no peek and poke */

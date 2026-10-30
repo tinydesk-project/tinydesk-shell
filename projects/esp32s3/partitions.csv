@@ -1,0 +1,8 @@
+# TinyDesk Shell for the ESP32-S3 (4 MB flash or more): one 2.5 MB app,
+# 1.4 MB LittleFS /fs, as on the classic ESP32. TinyDesk's ESP32-S3 desktop
+# firmware (16 MB) lays out its flash differently: erase when switching.
+# Name,     Type, SubType,  Offset,   Size,
+nvs,        data, nvs,      0x9000,   0x6000,
+phy_init,   data, phy,      0xF000,   0x1000,
+factory,    app,  factory,  0x10000,  0x280000,
+storage,    data, littlefs, 0x290000, 0x170000,

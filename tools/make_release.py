@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """make_release.py - package TinyDesk Shell for people without a toolchain.
 
-Run it after building the two ESP-IDF projects (the repository root for the
-ESP32-C6, projects/esp32 for the classic ESP32) and, optionally, the POSIX
+Run it after building the three ESP-IDF projects (the repository root for the
+ESP32-C6, projects/esp32 for the classic ESP32, projects/esp32s3 for the
+ESP32-S3) and, optionally, the POSIX
 host program. For each board it merges what `idf.py flash` writes (read
 from <build>/flash_args) into one "factory" image, and writes the flat set
 of files a GitHub release carries:
@@ -42,6 +43,7 @@ BOARDS = [
     # board id, project dir, esptool chip, ESP Web Tools chipFamily, what it needs
     ("esp32c6", ".", "esp32c6", "ESP32-C6", "ESP32-C6 with 8 MB flash"),
     ("esp32", "projects/esp32", "esp32", "ESP32", "any ESP32 with 4 MB flash or more (PSRAM optional)"),
+    ("esp32s3", "projects/esp32s3", "esp32s3", "ESP32-S3", "any ESP32-S3 with 4 MB flash or more (Octal PSRAM optional)"),
 ]
 
 

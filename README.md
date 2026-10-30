@@ -61,9 +61,10 @@ cd tinydesk-shell
 | --- | --- | --- |
 | ESP32-C6, 8 MB flash | the repository root | built-in USB Serial/JTAG |
 | classic ESP32, 4 MB flash or more, PSRAM optional | `projects/esp32` | UART0 (the USB-UART chip), 115200 baud |
+| ESP32-S3, 4 MB flash or more, Octal PSRAM optional | `projects/esp32s3` (`idf.py set-target esp32s3` first) | UART0 (the USB-UART chip, TX GPIO43, RX GPIO44), 115200 baud |
 
 ```bash
-idf.py build                       # in the root, or in projects/esp32
+idf.py build                       # in the root, projects/esp32 or projects/esp32s3
 idf.py -p PORT flash monitor
 ```
 
@@ -104,8 +105,8 @@ reboot
 [board.example.conf](board.example.conf) for keys and defaults.
 
 > The partition tables: ESP32-C6: application at `0x10000` (3 MB), LittleFS
-`storage` at `0x310000`; classic ESP32: application at `0x10000` (2.5 MB),
-LittleFS at `0x290000` (1.4 MB). The file system is formatted if it cannot be
+`storage` at `0x310000`; classic ESP32 and ESP32-S3: application at
+`0x10000` (2.5 MB), LittleFS at `0x290000` (1.4 MB). The file system is formatted if it cannot be
 mounted. Do not use `erase-flash` as a routine step.
 
 ## Embed it in your ESP-IDF application
