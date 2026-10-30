@@ -39,6 +39,7 @@ size (0.1.3); the SD card at `/sd` (`sd mount`, 0.1.2); `ping -c`, and
   ```bash
   esptool.py --chip esp32c6 write_flash 0x0 tinydesk-shell-{version}-esp32c6-factory.bin
   esptool.py --chip esp32 write_flash 0x0 tinydesk-shell-{version}-esp32-factory.bin
+  esptool.py --chip esp32s3 write_flash 0x0 tinydesk-shell-{version}-esp32s3-factory.bin
   ```
 
 * **Linux (x86_64, built on Ubuntu 22.04):** `tinydesk-shell-linux-x86_64.tar.gz`,
@@ -50,6 +51,7 @@ size (0.1.3); the SD card at `/sd` (`sd mount`, 0.1.2); `ping -c`, and
 | --- | --- |
 | `tinydesk-shell-{version}-esp32c6-factory.bin` | ESP32-C6 with 8 MB flash, built-in USB |
 | `tinydesk-shell-{version}-esp32-factory.bin` | any ESP32 with 4 MB flash or more; PSRAM is used when present |
+| `tinydesk-shell-{version}-esp32s3-factory.bin` | any ESP32-S3 with 4 MB flash or more, on its USB-UART port; Octal PSRAM is used when present |
 
 Check the files against `SHA256SUMS.txt`. The firmware is not signed. A
 factory image erases users, Wi-Fi networks and the SSH host key.
@@ -57,7 +59,7 @@ factory image erases users, Wi-Fi networks and the SSH host key.
 ## Before connecting
 
 Open the board's serial port in a UTF-8 terminal (115200 baud on the
-ESP32, any speed on the ESP32-C6's USB port), or the web terminal at
+ESP32 and ESP32-S3, any speed on the ESP32-C6's USB port), or the web terminal at
 <https://tinydesk-project.github.io/console/>. You start as root:
 run `passwd` locally (initial password: `TinyDesk`) before enabling remote
 access. `help` lists the commands; `.tdsh` scripts are described in

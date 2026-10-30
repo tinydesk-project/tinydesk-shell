@@ -1,7 +1,7 @@
 name: release
 
 # A tag v<version> (matching the VERSION file) builds TinyDesk Shell for the
-# ESP32-C6, the classic ESP32, Linux and Windows, and attaches the files to a draft
+# ESP32-C6, the classic ESP32, the ESP32-S3, Linux and Windows, and attaches the files to a draft
 # pre-release: factory images (esptool at 0x0), ESP Web Tools manifests,
 # the Linux and Windows programs, SHA256SUMS.txt and README.txt. Review the draft on
 # GitHub, then publish it.
@@ -76,12 +76,13 @@ jobs:
         with:
           name: host-windows
           path: host
-      - name: Build the firmware (ESP32-C6, ESP32)
+      - name: Build the firmware (ESP32-C6, ESP32, ESP32-S3)
         shell: bash
         run: |
           . $IDF_PATH/export.sh
           idf.py build
           (cd projects/esp32 && idf.py build)
+          (cd projects/esp32s3 && idf.py set-target esp32s3 && idf.py build)
       - name: Package
         shell: bash
         run: |

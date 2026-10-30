@@ -12,7 +12,8 @@ reporting a problem.
 
    On Windows add `-DCMAKE_C_COMPILER=gcc` (MinGW-w64).
 2. If you touched ESP-IDF code, build the standalone firmware: `idf.py build`
-   in the repository root (ESP32-C6) and in `projects/esp32` (ESP-IDF 5.3.1).
+   in the repository root (ESP32-C6), in `projects/esp32` and in
+   `projects/esp32s3` (ESP-IDF 5.3.1).
 3. Set up formatting once:
 
        pip install pre-commit

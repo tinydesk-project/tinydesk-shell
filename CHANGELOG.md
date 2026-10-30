@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+* **ESP32-S3 firmware:** `projects/esp32s3` builds TinyDesk Shell for any
+  ESP32-S3 with 4 MB flash or more, on UART0 (the dev board's USB-UART
+  port) at 115200 baud, with the classic ESP32's flash layout (2.5 MB
+  application, 1.4 MB `/fs`). Octal PSRAM is used when the module has it
+  (N16R8, N8R8). CI and the release build it; the release adds
+  `tinydesk-shell-<version>-esp32s3-factory.bin` and its web installer
+  manifest.
+* **`peek` and `poke` on the ESP32-S3:** internal SRAM, RTC slow RAM, the
+  mask ROM (32-bit reads) and the GPIO, IO_MUX and eFuse registers;
+  `poke` writes the GPIO output registers, as on the other chips. PSRAM
+  is not listed: the S3 maps it through its MMU at run time.
+
 ## 0.1.6 (2026-10-18)
 
 * **nano with UTF-8 text:** the cursor moved by bytes, so Left, Right,

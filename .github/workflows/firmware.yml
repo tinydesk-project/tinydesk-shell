@@ -21,3 +21,11 @@ jobs:
           cd projects/esp32
           idf.py build
           idf.py size
+      - name: ESP32-S3 (projects/esp32s3)
+        shell: bash
+        run: |
+          . $IDF_PATH/export.sh
+          cd projects/esp32s3
+          idf.py set-target esp32s3
+          idf.py build
+          idf.py size

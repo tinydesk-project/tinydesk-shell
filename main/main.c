@@ -1,6 +1,7 @@
 /*
  * main.c - the standalone TinyDesk Shell firmware: the shell on the chip's
- * console (USB Serial/JTAG on the ESP32-C6, UART0 on the classic ESP32),
+ * console (USB Serial/JTAG on the ESP32-C6, UART0 on the classic ESP32 and
+ * the ESP32-S3),
  * with one example application command.
  */
 #include <stdio.h>
