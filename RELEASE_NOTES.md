@@ -7,24 +7,22 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
-## New in 0.1.6
+## New in 0.2.0
 
-* **nano with UTF-8 text:** Left, Right, Backspace and Delete move over
-  and delete whole characters, so text such as `Привет` or `日本語` no
-  longer breaks into stray bytes; Up and Down keep the column, and the
-  column shown counts characters (tinydesk #4).
-* **`peek` and `poke`:** root can read RAM, ROM, PSRAM and the GPIO,
-  IO_MUX and eFuse registers of the ESP32 and the ESP32-C6, and write the
-  GPIO output registers; `peek -l` lists what is allowed. Other ports
-  list their own regions through the new `mem_regions` hook (#1).
-* **Scripts on small boards:** ports can set the script memory limits
-  (`TDSH_MAX_VARS`, `TDSH_VAR_NAME_MAX`, `TDSH_VAR_VALUE_MAX`,
-  `TDSH_SCRIPT_TASK_STACK`), and a script that runs out of memory while
-  it loads says so instead of stopping silently (#2, #4).
-* **Builds on macOS** (#5, by @mendeni).
+* **ESP32-S3:** `tinydesk-shell-{version}-esp32s3-factory.bin` runs on any
+  ESP32-S3 with 4 MB flash or more, on its USB-UART port (UART0) at
+  115200 baud, with the same flash layout as the ESP32 image (2.5 MB
+  application, 1.4 MB `/fs`). Octal PSRAM is used when the module has it
+  (N16R8, N8R8).
+* **`peek` and `poke` on the ESP32-S3:** internal SRAM, RTC slow RAM, the
+  mask ROM and the GPIO, IO_MUX and eFuse registers; `poke` writes the
+  GPIO output registers, as on the ESP32 and the ESP32-C6.
 
-Also since 0.1.0: only root changes the network policy, and board
-configuration numbers are decimal or `0x` hexadecimal (0.1.5); long
+Also since 0.1.0: nano with UTF-8 text, `peek` and `poke` on the ESP32
+and the ESP32-C6, script memory limits for small boards and a message
+when a script runs out of memory, and builds on macOS (0.1.6); only root
+changes the network policy, and board configuration numbers are decimal
+or `0x` hexadecimal (0.1.5); long
 command lines wrap and stay editable, and
 `board save` keeps built-in pins (0.1.4); nano follows the terminal's
 size (0.1.3); the SD card at `/sd` (`sd mount`, 0.1.2); `ping -c`, and

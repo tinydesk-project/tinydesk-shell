@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-10-31)
 
 * **ESP32-S3 firmware:** `projects/esp32s3` builds TinyDesk Shell for any
   ESP32-S3 with 4 MB flash or more, on UART0 (the dev board's USB-UART
