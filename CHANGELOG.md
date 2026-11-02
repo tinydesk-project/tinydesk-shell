@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+* **The file system grows to its partition:** LittleFS is mounted with
+  `grow_on_mount`, so a file system made for a smaller partition (by the
+  Shell firmware's layout, say, before the Desktop firmware was flashed)
+  grows to the whole partition at start, keeping its files. Before, the
+  rest stayed unused: an ESP32-S3 had 1.9 MB of its 9.9 MB `/fs`.
+
 ## 0.2.0 (2026-10-31)
 
 * **ESP32-S3 firmware:** `projects/esp32s3` builds TinyDesk Shell for any

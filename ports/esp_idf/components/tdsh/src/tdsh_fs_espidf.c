@@ -23,6 +23,10 @@ esp_err_t tdsh_fs_init(bool format_if_mount_failed)
         .partition_label = TDSH_PARTITION_LABEL,
         .format_if_mount_failed = format_if_mount_failed,
         .dont_mount = false,
+        /* A file system made for a smaller partition (an older layout, a
+         * Shell firmware) grows to the whole partition, keeping its files;
+         * otherwise the rest of the partition is never used. */
+        .grow_on_mount = true,
     };
 
     esp_err_t err = esp_vfs_littlefs_register(&conf);
