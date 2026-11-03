@@ -68,6 +68,7 @@ const char *tdsh_espidf_console_user(void);
  * editor asks a serial terminal (ESC[6n) and falls back to 80 columns.
  * SSH sessions use the width from the client's pty request. */
 void tdsh_espidf_set_console_columns(int (*columns)(void));
+void tdsh_espidf_set_console_flush(void (*flush)(void));
 const tdsh_platform_api_t *tdsh_espidf_platform(void);
 int tdsh_espidf_register_commands(const tdsh_espidf_config_t *config);
 
@@ -89,6 +90,7 @@ void tdsh_console_end_recovery(void);
  * Successful takeover revokes physical trust until reboot, even after logout. */
 bool tdsh_console_mark_remote(void);
 int tdsh_session_set_user(tdsh_session_t *session, const char *username);
+int tdsh_session_set_user_generation(tdsh_session_t *session,const char *username,uint32_t generation);
 int tdsh_run_user_startup(tdsh_session_t *session);
 
 /* ESP-IDF filesystem mount. Path normalization/resolution itself is core. */
@@ -99,6 +101,21 @@ void tdsh_fs_print_info(void);
 esp_err_t tdsh_users_init(void);
 bool tdsh_user_exists(const char *username);
 bool tdsh_user_authenticate(const char *username, const char *password);
+uint32_t tdsh_user_login(const char *username,const char *password);
+typedef struct { char name[TDSH_USERNAME_MAX];tdsh_role_t role;uint32_t rights; } tdsh_user_info_t;
+int tdsh_user_list(int index,tdsh_user_info_t *out);
+tdsh_role_t tdsh_user_role(const char *username);
+uint32_t tdsh_user_rights(const char *username);
+uint32_t tdsh_user_generation(const char *username);
+int tdsh_user_create(const char *actor,const char *name,const char *password,tdsh_role_t role,uint32_t rights);
+int tdsh_user_access_set(const char *actor,const char *name,tdsh_role_t role,uint32_t rights);
+int tdsh_user_password_set(const char *actor,const char *name,const char *old_password,const char *new_password);
+bool tdsh_remembered_user(char *out,size_t size);
+uint32_t tdsh_remembered_login(char *out,size_t size);
+bool tdsh_user_remember_allowed(const char *username);
+int tdsh_boot_login_require_password(void);
+int tdsh_cmd_userrole(tdsh_session_t *session,int argc,char **argv);
+int tdsh_cmd_userrights(tdsh_session_t *session,int argc,char **argv);
 bool tdsh_remote_access_ready(void);
 bool tdsh_user_authenticate_remote(const char *username, const char *password);
 int tdsh_cmd_users(tdsh_session_t *session, int argc, char **argv);
@@ -111,6 +128,7 @@ int tdsh_cmd_bootuser(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_rootrecover(tdsh_session_t *session, int argc, char **argv);
 int tdsh_boot_user_get(char *out, size_t out_size);
 int tdsh_boot_user_set(const char *username);
+int tdsh_boot_user_default(const char *username);
 
 /* Wi-Fi / Ethernet / network. */
 typedef enum

@@ -31,6 +31,32 @@ typedef struct
 } tdsh_core_state_t;
 
 static tdsh_core_state_t s_core;
+bool tdsh_session_valid(const tdsh_session_t *session)
+{
+    if(!session||!session->username[0])return false;
+    if(!s_core.cfg.user_generation)return true;
+    uint32_t current=s_core.cfg.user_generation(session->username);
+    return current&&current==session->user_generation;
+}
+
+tdsh_role_t tdsh_session_role(const tdsh_session_t *session)
+{
+    if(!tdsh_session_valid(session))return TDSH_ROLE_USER;
+    if(!strcmp(session->username,"root"))return TDSH_ROLE_ROOT;
+    tdsh_role_t role=s_core.cfg.user_role?s_core.cfg.user_role(session->username):TDSH_ROLE_USER;
+    return role==TDSH_ROLE_ADMIN?role:TDSH_ROLE_USER;
+}
+uint32_t tdsh_session_rights(const tdsh_session_t *session)
+{
+    tdsh_role_t role=tdsh_session_role(session);
+    if(role==TDSH_ROLE_ROOT)return TDSH_RIGHT_ALL;
+    if(!tdsh_session_valid(session))return 0;
+    return s_core.cfg.user_rights?(s_core.cfg.user_rights(session->username)&TDSH_RIGHT_ALL):role==TDSH_ROLE_ADMIN?TDSH_RIGHTS_ADMIN:TDSH_RIGHTS_USER;
+}
+bool tdsh_session_has_right(const tdsh_session_t *session,uint32_t right)
+{
+    return (tdsh_session_rights(session)&right)==right;
+}
 static atomic_size_t s_live_blocks;
 static atomic_size_t s_live_bytes;
 static atomic_size_t s_peak_blocks;
@@ -138,6 +164,7 @@ int tdsh_session_init(tdsh_session_t *session,
 
     memset(session, 0, sizeof(*session));
     snprintf(session->username, sizeof(session->username), "%s", username);
+    session->user_generation=s_core.cfg.user_generation?s_core.cfg.user_generation(username):0;
     snprintf(session->hostname, sizeof(session->hostname), "%s", s_core.cfg.hostname);
     if (strcmp(username, "root") == 0)
     {
@@ -222,11 +249,24 @@ int tdsh_execute_argv(tdsh_session_t *session, int argc, char **argv)
 {
     if (!session || argc <= 0 || !argv || !argv[0])
         return 0;
+    if(!tdsh_session_valid(session)){
+        session->logout_requested=true;
+        printf("tdsh: session expired; sign in again\n");return 126;
+    }
     const tdsh_command_t *cmd = tdsh_command_find(argv[0]);
     if (!cmd)
     {
         printf("tdsh: command not found: %s\n", argv[0]);
         return 127;
+    }
+    if ((cmd->flags & TDSH_CMD_ADMIN_ONLY) &&
+        (tdsh_session_role(session)<TDSH_ROLE_ADMIN||!tdsh_session_has_right(session,TDSH_RIGHT_USERS)))
+    {
+        printf("tdsh: permission denied: account administrator required\n");return 126;
+    }
+    if((cmd->flags>>8)&&!tdsh_session_has_right(session,cmd->flags>>8))
+    {
+        printf("tdsh: permission denied: account right required\n");return 126;
     }
     if ((cmd->flags & TDSH_CMD_ROOT_ONLY) != 0 &&
         strcmp(session->username, "root") != 0)

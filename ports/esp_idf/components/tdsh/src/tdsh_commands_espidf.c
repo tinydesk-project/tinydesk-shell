@@ -257,10 +257,12 @@ static int cmd_board(tdsh_session_t *session, int argc, char **argv)
 static const tdsh_command_t s_base_commands[] = {
     {"board", "board [show|get|set|unset|init|save] ...", "Show or change the board configuration (pins)", cmd_board, 0},
     {"users", "users", "List users", tdsh_cmd_users, 0},
-    {"useradd", "useradd <username>", "Create a user", tdsh_cmd_useradd, TDSH_CMD_ROOT_ONLY},
-    {"userdel", "userdel <username> [-f]", "Delete a user", tdsh_cmd_userdel, TDSH_CMD_ROOT_ONLY},
+    {"useradd", "useradd <username> [admin|user]", "Create an account", tdsh_cmd_useradd, TDSH_CMD_ADMIN_ONLY | TDSH_CMD_INTERACTIVE},
+    {"userdel", "userdel <username> [-f]", "Delete a user", tdsh_cmd_userdel, TDSH_CMD_ADMIN_ONLY | TDSH_CMD_INTERACTIVE},
     {"login", "login <username>", "Login as another user", tdsh_cmd_login, TDSH_CMD_INTERACTIVE},
     {"logout", "logout", "Logout current session", tdsh_cmd_logout, TDSH_CMD_INTERACTIVE},
+    {"userrole", "userrole <username> [admin|user]", "Show or set account role", tdsh_cmd_userrole, 0},
+    {"userrights", "userrights <username> [+right|-right ...]", "Show or share account permissions", tdsh_cmd_userrights, 0},
     {"bootuser", "bootuser [username]", "Show/set physical-console boot user", tdsh_cmd_bootuser, 0},
     {"rootrecover", "rootrecover", "Reset root password from physical USB console", tdsh_cmd_rootrecover, TDSH_CMD_INTERACTIVE},
     {"tz", "tz [[+|-]HH:MM]", "Show/set user timezone offset", tdsh_cmd_tz, 0},
@@ -269,18 +271,18 @@ static const tdsh_command_t s_base_commands[] = {
     {"passwd", "passwd", "Change current user's password", tdsh_cmd_passwd, TDSH_CMD_INTERACTIVE},
     {"idfinfo", "idfinfo", "Show ESP-IDF/chip information", cmd_idfinfo, 0},
     {"heap", "heap", "Show ESP-IDF heap and shell tracked allocations", cmd_heap, 0},
-    {"reboot", "reboot", "Restart the MCU", cmd_reboot, TDSH_CMD_ROOT_ONLY},
+    {"reboot", "reboot", "Restart the MCU", cmd_reboot, TDSH_CMD_RIGHT(TDSH_RIGHT_SYSTEM)},
 };
 
 static const tdsh_command_t s_network_commands[] = {
     {"networks", "networks", "List saved Wi-Fi networks", tdsh_cmd_networks, 0},
     {"wifiscan", "wifiscan", "Scan and list available Wi-Fi networks", tdsh_cmd_wifiscan, 0},
-    {"wificonnect", "wificonnect [saved_ssid]", "Connect to a saved network", tdsh_cmd_wificonnect, 0},
-    {"wifidisconnect", "wifidisconnect", "Disconnect station Wi-Fi", tdsh_cmd_wifidisconnect, 0},
-    {"wifiadd", "wifiadd <ssid> [password]", "Save a Wi-Fi network in NVS", tdsh_cmd_wifiadd, 0},
-    {"wifiremove", "wifiremove <ssid ...>", "Remove saved Wi-Fi networks", tdsh_cmd_wifiremove, 0},
-    {"lan", "lan <status|config|enable|disable|dhcp|static|dns|hw|poll> ...", "Configure W6100 Ethernet", tdsh_cmd_lan, 0},
-    {"network", "network [status] | network mode [auto|lan|wifi|both] | network autowifi [on|off]", "Configure network policy", tdsh_cmd_network, 0},
+    {"wificonnect", "wificonnect [saved_ssid]", "Connect to a saved network", tdsh_cmd_wificonnect, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"wifidisconnect", "wifidisconnect", "Disconnect station Wi-Fi", tdsh_cmd_wifidisconnect, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"wifiadd", "wifiadd <ssid> [password]", "Save a Wi-Fi network in NVS", tdsh_cmd_wifiadd, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"wifiremove", "wifiremove <ssid ...>", "Remove saved Wi-Fi networks", tdsh_cmd_wifiremove, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"lan", "lan <status|config|enable|disable|dhcp|static|dns|hw|poll> ...", "Configure W6100 Ethernet", tdsh_cmd_lan, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"network", "network [status] | network mode [auto|lan|wifi|both] | network autowifi [on|off]", "Configure network policy", tdsh_cmd_network, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
     {"netmount", "netmount <list|add|connect|disconnect|status|remove> ...", "Map SMB2/SMB3 shares", tdsh_cmd_netmount, 0},
     {"ifconfig", "ifconfig", "Show network interfaces and default route", tdsh_cmd_ifconfig, 0},
     {"ping", "ping [-c count] <host/address ...>", "Send ICMP echo requests", tdsh_cmd_ping, 0},
@@ -289,8 +291,8 @@ static const tdsh_command_t s_network_commands[] = {
 static const tdsh_command_t s_remote_server_commands[] = {
     /* not root-only any more. The commands themselves allow
      * root anywhere and any user on the local console (Terminal / desktop). */
-    {"ftp", "ftp <start|stop|restart|status> [port]", "Control FTP server", tdsh_cmd_ftp, 0},
-    {"ssh", "ssh <start|stop|restart|status> [port] | ssh hostkey [new]", "Control SSH/SFTP server", tdsh_cmd_ssh, 0},
+    {"ftp", "ftp <start|stop|restart|status> [port]", "Control FTP server", tdsh_cmd_ftp, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"ssh", "ssh <start|stop|restart|status> [port] | ssh hostkey [new]", "Control SSH/SFTP server", tdsh_cmd_ssh, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
 };
 
 static const tdsh_command_t s_editor_commands[] = {
@@ -299,8 +301,8 @@ static const tdsh_command_t s_editor_commands[] = {
 };
 
 static const tdsh_command_t s_hardware_commands[] = {
-    {"gpio", "gpio <init|get|set> ...", "Configure and control GPIO", cmd_gpio, TDSH_CMD_ROOT_ONLY},
-    {"hwtest", "hwtest <status|sd|uart|rs485|all> [count]", "Board SD/UART/RS485 hardware tests", tdsh_cmd_hwtest, TDSH_CMD_ROOT_ONLY},
+    {"gpio", "gpio <init|get|set> ...", "Configure and control GPIO", cmd_gpio, TDSH_CMD_RIGHT(TDSH_RIGHT_HARDWARE)},
+    {"hwtest", "hwtest <status|sd|uart|rs485|all> [count]", "Board SD/UART/RS485 hardware tests", tdsh_cmd_hwtest, TDSH_CMD_RIGHT(TDSH_RIGHT_HARDWARE)},
     {"sd", "sd [status] | sd mount | sd umount | sd format --yes", "SD card at /sd (FAT)", tdsh_cmd_sd, TDSH_CMD_ROOT_ONLY},
 };
 

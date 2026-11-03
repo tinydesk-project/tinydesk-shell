@@ -30,6 +30,12 @@
 static const char *TAG = "tdsh";
 static tdsh_espidf_config_t s_config;
 static tdsh_session_t s_session;
+/* UI and console tasks exchange a published identity, never a half-written
+ * session. No provider/NVS calls occur while this short spinlock is held. */
+static portMUX_TYPE s_user_mux = portMUX_INITIALIZER_UNLOCKED;
+static char s_published_user[TDSH_USERNAME_MAX];
+static uint32_t s_published_generation;
+static bool s_user_switching = true;
 static bool s_initialized;
 static bool s_started;
 static TaskHandle_t s_local_shell_task = NULL;
@@ -401,14 +407,23 @@ int tdsh_console_readline(const char *prompt, char *buf, size_t capacity, bool e
     }
 }
 
-int tdsh_session_set_user(tdsh_session_t *session, const char *username)
+static void (*s_console_flush)(void);
+void tdsh_espidf_set_console_flush(void (*flush)(void)){s_console_flush=flush;}
+int tdsh_session_set_user_generation(tdsh_session_t *session, const char *username,uint32_t generation)
 {
     if (!session || !username || username[0] == '\0')
         return -EINVAL;
     if (strlen(username) >= sizeof(session->username))
         return -ENAMETOOLONG;
+    uint32_t current=tdsh_user_generation(username);
+    if(!current||(generation&&generation!=current))return -EACCES;
+    if(session==&s_session){
+        taskENTER_CRITICAL(&s_user_mux);s_user_switching=true;taskEXIT_CRITICAL(&s_user_mux);
+        session->logout_requested=true;if(s_console_flush)s_console_flush();
+    }
 
     snprintf(session->username, sizeof(session->username), "%s", username);
+    session->user_generation=generation?generation:current;
     memset(session->vars, 0, sizeof(session->vars));
     if (strcmp(username, "root") == 0)
     {
@@ -428,7 +443,17 @@ int tdsh_session_set_user(tdsh_session_t *session, const char *username)
     }
 
     session->logout_requested = false;
+    if(session==&s_session){
+        taskENTER_CRITICAL(&s_user_mux);
+        memcpy(s_published_user,session->username,sizeof(s_published_user));
+        s_published_generation=session->user_generation;s_user_switching=false;
+        taskEXIT_CRITICAL(&s_user_mux);
+    }
     return 0;
+}
+int tdsh_session_set_user(tdsh_session_t *session,const char *username)
+{
+    return tdsh_session_set_user_generation(session,username,0);
 }
 
 
@@ -463,26 +488,43 @@ int tdsh_run_user_startup(tdsh_session_t *session)
  * e.g. when someone logs in to the desktop over Telnet. The switch happens
  * when the console next waits for input; the host wakes it with Ctrl+C. */
 static char s_switch_user[TDSH_USERNAME_MAX];
-static volatile bool s_switch_pending;
+static bool s_switch_pending;
 
 void tdsh_espidf_console_set_user(const char *username)
 {
-    snprintf(s_switch_user, sizeof(s_switch_user), "%s", username ? username : "");
+    char target[TDSH_USERNAME_MAX]={0};
+    snprintf(target,sizeof(target),"%s",username?username:"");
+    taskENTER_CRITICAL(&s_user_mux);
+    s_user_switching=true;
+    memcpy(s_switch_user,target,sizeof(s_switch_user));
     s_switch_pending = true;
+    taskEXIT_CRITICAL(&s_user_mux);
 }
 
 const char *tdsh_espidf_console_user(void)
 {
-    return s_session.username;
+    static char user[TDSH_USERNAME_MAX];uint32_t generation;
+    taskENTER_CRITICAL(&s_user_mux);
+    bool blocked=s_user_switching||s_switch_pending;
+    if(blocked)user[0]=0;else memcpy(user,s_published_user,sizeof(user));
+    generation=s_published_generation;
+    taskEXIT_CRITICAL(&s_user_mux);
+    if(!user[0]||!generation||tdsh_user_generation(user)!=generation)user[0]=0;
+    return user;
 }
 
 /* Apply a pending switch. Returns true if the user changed. */
 static bool apply_user_switch(void)
 {
-    if (!s_switch_pending)
-        return false;
-    s_switch_pending = false;
-    if (!tdsh_user_exists(s_switch_user) || tdsh_session_set_user(&s_session, s_switch_user) != 0)
+    char target[TDSH_USERNAME_MAX];
+    taskENTER_CRITICAL(&s_user_mux);
+    bool pending=s_switch_pending;
+    memcpy(target,s_switch_user,sizeof(target));
+    s_switch_pending=false;
+    taskEXIT_CRITICAL(&s_user_mux);
+    if(!pending)return false;
+    if(!target[0]){s_session.logout_requested=true;if(s_console_flush)s_console_flush();return false;}
+    if (!tdsh_user_exists(target) || tdsh_session_set_user(&s_session, target) != 0)
         return false;
     printf("\033[2J\033[HSession for %s.\r\n\r\n", s_session.username);
     return true;
@@ -490,6 +532,7 @@ static bool apply_user_switch(void)
 
 static void local_login_loop(void)
 {
+    taskENTER_CRITICAL(&s_user_mux);s_user_switching=true;taskEXIT_CRITICAL(&s_user_mux);
     for (;;)
     {
         if (apply_user_switch())
@@ -509,7 +552,8 @@ static void local_login_loop(void)
         }
 
         n = tdsh_console_readline("Password: ", pass, sizeof(pass), false);
-        if (n <= 0 || !tdsh_user_authenticate(user, pass))
+        uint32_t generation=n>0?tdsh_user_login(user,pass):0;
+        if (!generation)
         {
             memset(pass, 0, sizeof(pass));
             printf("Login incorrect.\n");
@@ -517,7 +561,7 @@ static void local_login_loop(void)
         }
 
         memset(pass, 0, sizeof(pass));
-        if (tdsh_session_set_user(&s_session, user) != 0)
+        if (tdsh_session_set_user_generation(&s_session, user,generation) != 0)
         {
             printf("tdsh: unable to start user session\n");
             continue;
@@ -547,7 +591,9 @@ static void local_console_loop(void)
     {
         char prompt[TDSH_MAX_PATH + 96];
         char line[TDSH_MAX_LINE + 1];
+        if(s_session.logout_requested||!tdsh_session_valid(&s_session))local_login_loop();
         (void)apply_user_switch();
+        if(s_session.logout_requested)continue;
         build_prompt(&s_session, prompt, sizeof(prompt));
 
         int n = tdsh_interactive_readline(&s_session, prompt, line, sizeof(line));
@@ -625,6 +671,9 @@ esp_err_t tdsh_espidf_init(const tdsh_espidf_config_t *config)
     core.history_length = config->history_length;
     core.platform = tdsh_espidf_platform();
     core.path_translate = espidf_translate_path;
+    core.user_role = tdsh_user_role;
+    core.user_generation = tdsh_user_generation;
+    core.user_rights = tdsh_user_rights;
 
     int core_rc = tdsh_core_init(&core);
     if (core_rc != 0)
@@ -685,12 +734,12 @@ esp_err_t tdsh_espidf_init(const tdsh_espidf_config_t *config)
     if (tdsh_boot_user_get(boot_user, sizeof(boot_user)) != 0)
     {
         snprintf(boot_user, sizeof(boot_user), "%s", fallback_user);
-        (void)tdsh_boot_user_set(boot_user);
+        (void)tdsh_boot_user_default(boot_user);
     }
     if (!tdsh_user_exists(boot_user))
     {
         snprintf(boot_user, sizeof(boot_user), "root");
-        (void)tdsh_boot_user_set(boot_user);
+        (void)tdsh_boot_user_default(boot_user);
     }
     if (tdsh_session_set_user(&s_session, boot_user) != 0)
         return ESP_FAIL;

@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "tdsh_platform.h"
+#include "tdsh_permissions.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +62,8 @@ extern "C" {
 #define TDSH_CMD_ROOT_ONLY   (1u << 0)
 #define TDSH_CMD_INTERACTIVE (1u << 1)
 #define TDSH_CMD_BG_ALLOWED  (1u << 2)
+#define TDSH_CMD_ADMIN_ONLY (1u << 3)
+#define TDSH_CMD_RIGHT(right) ((uint32_t)(right) << 8)
 
 #define TDSH_TERM_CAP_ANSI       (1u << 0)
 #define TDSH_TERM_CAP_COLOR      (1u << 1)
@@ -87,6 +90,7 @@ typedef struct tdsh_session
     void *user_context;
     bool interactive;
     uint32_t terminal_caps;
+    uint32_t user_generation;
     bool logout_requested;
 } tdsh_session_t;
 
@@ -117,6 +121,9 @@ typedef struct
     const tdsh_platform_api_t *platform;
     tdsh_path_translate_fn_t path_translate;
     void *path_translate_context;
+    tdsh_role_t (*user_role)(const char *username);
+    uint32_t (*user_rights)(const char *username);
+    uint32_t (*user_generation)(const char *username);
 } tdsh_core_config_t;
 
 #define TDSH_CORE_CONFIG_DEFAULT()      \

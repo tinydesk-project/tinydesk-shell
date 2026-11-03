@@ -435,11 +435,11 @@ int tdsh_cmd_ifconfig(tdsh_session_t *session, int argc, char **argv)
 
 int tdsh_cmd_network(tdsh_session_t *session, int argc, char **argv)
 {
-    /* Both settings are the device's, not the user's: only root changes them. */
+    /* Device-wide settings require the delegated network permission. */
     if (argc == 3 && (strcmp(argv[1], "mode") == 0 || strcmp(argv[1], "autowifi") == 0) &&
-        strcmp(session->username, "root") != 0)
+        !tdsh_session_has_right(session,TDSH_RIGHT_NETWORK))
     {
-        printf("network: permission denied: root required\n");
+        printf("network: permission denied: network permission required\n");
         return 1;
     }
 
