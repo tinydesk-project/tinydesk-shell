@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+* **Account roles and rights (ESP-IDF port):** every account other than
+  root is an Admin or a User with rights: `users`, `system`, `network`,
+  `hardware`, `shared`, `time` and `apps`. New Users get `apps`, new
+  Admins everything but `hardware`; accounts from older firmware become
+  Users with `apps`. `useradd NAME [admin|user]`, `userrole NAME
+  [admin|user]` and `userrights NAME [+right|-right ...]` set them. An
+  Admin with `users` may create, change and delete accounts whose rights
+  it holds, never give more, and never change root or itself. Commands
+  ask for rights with `TDSH_CMD_RIGHT()` (`reboot`: system; the Wi-Fi,
+  `network`, `lan`, `ssh` and `ftp` commands: network; `gpio`, `hwtest`:
+  hardware) and `TDSH_CMD_ADMIN_ONLY`. Roles live in a separate NVS key
+  (`ush_users` / `access`) tied to each account's name and salt; the
+  password database is unchanged. See `docs/ACCOUNTS.md`.
+* **`/shared`:** made at start; accounts with `shared` may use it, while
+  homes stay private and `/root` stays root's.
+* **Sessions follow the account:** a password change or a recreated
+  account ends that account's sessions (`tdsh: session expired; sign in
+  again`).
+* **Verified remembered desktop login:** `bootuser NAME` (root) also
+  turns on remembered login for a desktop that consumes the account
+  provider, but only after that account has logged in with its password
+  (`ush_users` / `remember` and `proof`). A password change ends it;
+  `bootuser --require-password` (or `off`) turns it off and erases the
+  proof. Both work in `/root/.tdshrc.tdsh`.
+
 * **The file system grows to its partition:** LittleFS is mounted with
   `grow_on_mount`, so a file system made for a smaller partition (by the
   Shell firmware's layout, say, before the Desktop firmware was flashed)
