@@ -103,9 +103,11 @@ int tdsh_path_normalize(tdsh_session_t *session,
 {
     if (!session || !input || !logical_out || logical_out_size < 2)
         return -EINVAL;
-    if(!tdsh_session_valid(session))return -EACCES;
+    if (!tdsh_session_valid(session))
+        return -EACCES;
     const bool is_root = strcmp(session->username, "root") == 0;
-    if(!is_root&&(strchr(input,'\\')||strchr(input,':')))return -EINVAL;
+    if (!is_root && (strchr(input, '\\') || strchr(input, ':')))
+        return -EINVAL;
     char combined[TDSH_MAX_PATH * 2];
 
     if (is_root)
@@ -140,12 +142,13 @@ int tdsh_path_normalize(tdsh_session_t *session,
         return split_normalized(combined, logical_out, logical_out_size, 0);
     }
 
-    bool shared=tdsh_session_has_right(session,TDSH_RIGHT_SHARED);
-    bool from_shared=shared&&path_is_home_or_child(session->cwd,"/shared");
-    bool to_shared=path_is_home_or_child(input,"/shared");
-    if(to_shared&&!shared)return -EACCES;
-    const char *jail=to_shared||(from_shared&&input[0]!='/'&&input[0]!='~')?"/shared":session->home;
-    if (!path_is_home_or_child(session->cwd, session->home)&&!from_shared)
+    bool shared = tdsh_session_has_right(session, TDSH_RIGHT_SHARED);
+    bool from_shared = shared && path_is_home_or_child(session->cwd, "/shared");
+    bool to_shared = path_is_home_or_child(input, "/shared");
+    if (to_shared && !shared)
+        return -EACCES;
+    const char *jail = to_shared || (from_shared && input[0] != '/' && input[0] != '~') ? "/shared" : session->home;
+    if (!path_is_home_or_child(session->cwd, session->home) && !from_shared)
         return -EACCES;
 
     if (input[0] == '\0')
@@ -164,7 +167,7 @@ int tdsh_path_normalize(tdsh_session_t *session,
     {
         if (targets_forbidden_tree(session, input))
             return -EACCES;
-        if (path_is_home_or_child(input, session->home)||to_shared)
+        if (path_is_home_or_child(input, session->home) || to_shared)
         {
             if (snprintf(combined, sizeof(combined), "%s", input) >= (int)sizeof(combined))
                 return -ENAMETOOLONG;

@@ -28,9 +28,16 @@
 #define HASH_ROUNDS     2048
 
 static SemaphoreHandle_t s_users_mutex;
-typedef struct { bool locked; } users_guard_t;
-static void users_unguard(users_guard_t *guard){if(guard->locked)xSemaphoreGiveRecursive(s_users_mutex);}
-#define USERS_GUARD users_guard_t guard __attribute__((cleanup(users_unguard)))={s_users_mutex&&xSemaphoreTakeRecursive(s_users_mutex,portMAX_DELAY)==pdTRUE}
+typedef struct
+{
+    bool locked;
+} users_guard_t;
+static void users_unguard(users_guard_t *guard)
+{
+    if (guard->locked)
+        xSemaphoreGiveRecursive(s_users_mutex);
+}
+#define USERS_GUARD users_guard_t guard __attribute__((cleanup(users_unguard))) = {s_users_mutex && xSemaphoreTakeRecursive(s_users_mutex, portMAX_DELAY) == pdTRUE}
 
 static const char *TAG = "tdsh-users";
 static void hint_forget(const char *name);   /* tdsh_users_hint.inc */
@@ -62,7 +69,7 @@ static bool s_verified[USER_MAX];
 static void access_load(void);
 static esp_err_t access_save(nvs_handle_t handle);
 static void remember_verified(const char *username);
-static bool access_can_manage(const char *actor,const char *name);
+static bool access_can_manage(const char *actor, const char *name);
 
 
 static void ensure_user_startup_file(const char *username)
@@ -118,7 +125,7 @@ int tdsh_boot_user_get(char *out, size_t out_size)
     return 0;
 }
 
-static int boot_user_write(const char *username,bool remember)
+static int boot_user_write(const char *username, bool remember)
 {
     USERS_GUARD;
     if (!username || !username[0] || !tdsh_user_exists(username))
@@ -127,32 +134,48 @@ static int boot_user_write(const char *username,bool remember)
     esp_err_t err = nvs_open(USER_NS, NVS_READWRITE, &h);
     if (err != ESP_OK)
         return -EIO;
-    char previous[TDSH_USERNAME_MAX];size_t length=sizeof(previous);
-    bool same=nvs_get_str(h,BOOT_USER_KEY,previous,&length)==ESP_OK&&!strcmp(previous,username);
-    if(!remember||!same){
-        err=nvs_set_u8(h,"remember",0);
-        if(err==ESP_OK){esp_err_t erased=nvs_erase_key(h,"proof");if(erased!=ESP_OK&&erased!=ESP_ERR_NVS_NOT_FOUND)err=erased;}
+    char previous[TDSH_USERNAME_MAX];
+    size_t length = sizeof(previous);
+    bool same = nvs_get_str(h, BOOT_USER_KEY, previous, &length) == ESP_OK && !strcmp(previous, username);
+    if (!remember || !same)
+    {
+        err = nvs_set_u8(h, "remember", 0);
+        if (err == ESP_OK)
+        {
+            esp_err_t erased = nvs_erase_key(h, "proof");
+            if (erased != ESP_OK && erased != ESP_ERR_NVS_NOT_FOUND)
+                err = erased;
+        }
     }
-    if(err==ESP_OK)err = nvs_set_str(h, BOOT_USER_KEY, username);
-    if(err==ESP_OK)err=nvs_set_u8(h,"remember",remember?1:0);
+    if (err == ESP_OK)
+        err = nvs_set_str(h, BOOT_USER_KEY, username);
+    if (err == ESP_OK)
+        err = nvs_set_u8(h, "remember", remember ? 1 : 0);
     if (err == ESP_OK)
         err = nvs_commit(h);
     nvs_close(h);
-    if(err==ESP_OK&&remember)remember_verified(username);
+    if (err == ESP_OK && remember)
+        remember_verified(username);
     return err == ESP_OK ? 0 : -EIO;
 }
-int tdsh_boot_user_set(const char *username){return boot_user_write(username,true);}
+int tdsh_boot_user_set(const char *username)
+{
+    return boot_user_write(username, true);
+}
 /* Choosing a fallback console identity must not opt a new device into
  * remembered desktop login without the owner's explicit choice. */
-int tdsh_boot_user_default(const char *username){return boot_user_write(username,false);}
+int tdsh_boot_user_default(const char *username)
+{
+    return boot_user_write(username, false);
+}
 
 static bool valid_username(const char *name)
 {
-    if (!name || !name[0] || !strcmp(name,".") || !strcmp(name,"..") || strlen(name) >= TDSH_USERNAME_MAX)
+    if (!name || !name[0] || !strcmp(name, ".") || !strcmp(name, "..") || strlen(name) >= TDSH_USERNAME_MAX)
         return false;
     for (const unsigned char *p = (const unsigned char *)name; *p; ++p)
     {
-        if (!((*p>='a'&&*p<='z')||(*p>='A'&&*p<='Z')||(*p>='0'&&*p<='9')|| *p == '_' || *p == '-' || *p == '.'))
+        if (!((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') || (*p >= '0' && *p <= '9') || *p == '_' || *p == '-' || *p == '.'))
             return false;
     }
     return true;
@@ -160,7 +183,8 @@ static bool valid_username(const char *name)
 
 static int find_user(const char *name)
 {
-    if(!name)return -1;
+    if (!name)
+        return -1;
     for (int i = 0; i < USER_MAX; ++i)
     {
         if (s_db.entries[i].used && strcmp(s_db.entries[i].name, name) == 0)
@@ -176,7 +200,8 @@ static esp_err_t save_db(void)
     if (err != ESP_OK)
         return err;
     err = access_save(h);
-    if(err==ESP_OK)err = nvs_set_blob(h, USER_KEY, &s_db, sizeof(s_db));
+    if (err == ESP_OK)
+        err = nvs_set_blob(h, USER_KEY, &s_db, sizeof(s_db));
     if (err == ESP_OK)
         err = nvs_commit(h);
     nvs_close(h);
@@ -229,13 +254,18 @@ static esp_err_t set_password_idx(int idx, const char *password)
     USERS_GUARD;
     if (idx < 0 || idx >= USER_MAX || !password || strlen(password) < 1)
         return ESP_ERR_INVALID_ARG;
-    user_entry_t old=s_db.entries[idx];
+    user_entry_t old = s_db.entries[idx];
     esp_fill_random(s_db.entries[idx].salt, USER_SALT_LEN);
     if (make_hash(password, s_db.entries[idx].salt, s_db.entries[idx].hash) != 0)
-    { s_db.entries[idx]=old;return ESP_FAIL; }
-    esp_err_t result=save_db();
-    if(result!=ESP_OK)s_db.entries[idx]=old;
-    else s_verified[idx]=false;
+    {
+        s_db.entries[idx] = old;
+        return ESP_FAIL;
+    }
+    esp_err_t result = save_db();
+    if (result != ESP_OK)
+        s_db.entries[idx] = old;
+    else
+        s_verified[idx] = false;
     return result;
 }
 
@@ -251,8 +281,10 @@ esp_err_t tdsh_users_init(void)
 {
     if (s_ready)
         return ESP_OK;
-    if(!s_users_mutex)s_users_mutex=xSemaphoreCreateRecursiveMutex();
-    if(!s_users_mutex)return ESP_ERR_NO_MEM;
+    if (!s_users_mutex)
+        s_users_mutex = xSemaphoreCreateRecursiveMutex();
+    if (!s_users_mutex)
+        return ESP_ERR_NO_MEM;
     memset(&s_db, 0, sizeof(s_db));
 
     nvs_handle_t h;
@@ -263,10 +295,12 @@ esp_err_t tdsh_users_init(void)
     err = nvs_get_blob(h, USER_KEY, &s_db, &len);
     nvs_close(h);
 
-    if(err!=ESP_ERR_NVS_NOT_FOUND && (err!=ESP_OK||len!=sizeof(s_db)||s_db.magic!=USER_DB_MAGIC||s_db.version!=USER_DB_VERSION))
+    if (err != ESP_ERR_NVS_NOT_FOUND && (err != ESP_OK || len != sizeof(s_db) || s_db.magic != USER_DB_MAGIC || s_db.version != USER_DB_VERSION))
         return ESP_ERR_INVALID_STATE;
-    memset(s_roles,0,sizeof(s_roles));memset(s_verified,0,sizeof(s_verified));
-    for(int i=0;i<USER_MAX;i++)s_rights[i]=TDSH_RIGHTS_USER;
+    memset(s_roles, 0, sizeof(s_roles));
+    memset(s_verified, 0, sizeof(s_verified));
+    for (int i = 0; i < USER_MAX; i++)
+        s_rights[i] = TDSH_RIGHTS_USER;
     if (err == ESP_ERR_NVS_NOT_FOUND)
     {
         memset(&s_db, 0, sizeof(s_db));
@@ -284,14 +318,25 @@ esp_err_t tdsh_users_init(void)
         ESP_LOGW(TAG, "Created root user with the factory password '" DEFAULT_ROOT_PASSWORD "'; change it with passwd");
     }
 
-    for(int i=0;i<USER_MAX;i++)if(s_db.entries[i].used&&(!memchr(s_db.entries[i].name,0,TDSH_USERNAME_MAX)||!valid_username(s_db.entries[i].name)))return ESP_ERR_INVALID_STATE;
-    unsigned used=0;bool root_found=false;
-    for(int i=0;i<USER_MAX;i++)if(s_db.entries[i].used){
-        if(s_db.entries[i].used!=1)return ESP_ERR_INVALID_STATE;
-        used++;if(!strcmp(s_db.entries[i].name,"root"))root_found=true;
-        for(int j=0;j<i;j++)if(s_db.entries[j].used&&!strcmp(s_db.entries[i].name,s_db.entries[j].name))return ESP_ERR_INVALID_STATE;
-    }
-    if(!root_found||used!=s_db.count)return ESP_ERR_INVALID_STATE;
+    for (int i = 0; i < USER_MAX; i++)
+        if (s_db.entries[i].used && (!memchr(s_db.entries[i].name, 0, TDSH_USERNAME_MAX) || !valid_username(s_db.entries[i].name)))
+            return ESP_ERR_INVALID_STATE;
+    unsigned used = 0;
+    bool root_found = false;
+    for (int i = 0; i < USER_MAX; i++)
+        if (s_db.entries[i].used)
+        {
+            if (s_db.entries[i].used != 1)
+                return ESP_ERR_INVALID_STATE;
+            used++;
+            if (!strcmp(s_db.entries[i].name, "root"))
+                root_found = true;
+            for (int j = 0; j < i; j++)
+                if (s_db.entries[j].used && !strcmp(s_db.entries[i].name, s_db.entries[j].name))
+                    return ESP_ERR_INVALID_STATE;
+        }
+    if (!root_found || used != s_db.count)
+        return ESP_ERR_INVALID_STATE;
     access_load();
     (void)mkdir(TDSH_MOUNT_POINT "/shared", 0755);
     s_ready = true;
@@ -312,7 +357,8 @@ bool tdsh_user_exists(const char *username)
 bool tdsh_user_authenticate(const char *username, const char *password)
 {
     USERS_GUARD;
-    if(!s_ready)return false;
+    if (!s_ready)
+        return false;
     int idx = find_user(username);
     if (idx < 0 || !password)
         return false;
@@ -388,30 +434,49 @@ int tdsh_cmd_users(tdsh_session_t *session, int argc, char **argv)
     return 0;
 }
 
-int tdsh_cmd_useradd(tdsh_session_t *session,int argc,char **argv)
+int tdsh_cmd_useradd(tdsh_session_t *session, int argc, char **argv)
 {
-    if(argc<2||argc>3||!valid_username(argv[1])){printf("usage: useradd <username> [admin|user]\n");return 2;}
-    if(tdsh_session_role(session)<TDSH_ROLE_ADMIN||!tdsh_session_has_right(session,TDSH_RIGHT_USERS)){printf("tdsh: administrator required\n");return 1;}
-    tdsh_role_t role=argc==3&&!strcmp(argv[2],"admin")?TDSH_ROLE_ADMIN:TDSH_ROLE_USER;
-    if(argc==3&&strcmp(argv[2],"admin")&&strcmp(argv[2],"user"))return 2;
-    char p1[129]={0},p2[129]={0};int rc=1;
-    if(!read_password("New password: ",p1,sizeof(p1))&&!read_password("Retype new password: ",p2,sizeof(p2))&&!strcmp(p1,p2)){
-        uint32_t rights=(role==TDSH_ROLE_ADMIN?TDSH_RIGHTS_ADMIN:TDSH_RIGHTS_USER)&tdsh_session_rights(session);
-        rc=tdsh_user_create(session->username,argv[1],p1,role,rights);
-        char hint[TDSH_HINT_MAX]={0};
-        if(!rc&&tdsh_console_readline("Password hint (optional, shown at Sign in): ",hint,sizeof(hint),true)>0){
-            if(tdsh_hint_reveals(hint,p1))printf("useradd: the hint contains the password; no hint saved.\n");
-            else if(tdsh_user_hint_set(session->username,argv[1],hint))printf("useradd: hint not saved.\n");
+    if (argc < 2 || argc > 3 || !valid_username(argv[1]))
+    {
+        printf("usage: useradd <username> [admin|user]\n");
+        return 2;
+    }
+    if (tdsh_session_role(session) < TDSH_ROLE_ADMIN || !tdsh_session_has_right(session, TDSH_RIGHT_USERS))
+    {
+        printf("tdsh: administrator required\n");
+        return 1;
+    }
+    tdsh_role_t role = argc == 3 && !strcmp(argv[2], "admin") ? TDSH_ROLE_ADMIN : TDSH_ROLE_USER;
+    if (argc == 3 && strcmp(argv[2], "admin") && strcmp(argv[2], "user"))
+        return 2;
+    char p1[129] = {0}, p2[129] = {0};
+    int rc = 1;
+    if (!read_password("New password: ", p1, sizeof(p1)) && !read_password("Retype new password: ", p2, sizeof(p2)) && !strcmp(p1, p2))
+    {
+        uint32_t rights = (role == TDSH_ROLE_ADMIN ? TDSH_RIGHTS_ADMIN : TDSH_RIGHTS_USER) & tdsh_session_rights(session);
+        rc = tdsh_user_create(session->username, argv[1], p1, role, rights);
+        char hint[TDSH_HINT_MAX] = {0};
+        if (!rc && tdsh_console_readline("Password hint (optional, shown at Sign in): ", hint, sizeof(hint), true) > 0)
+        {
+            if (tdsh_hint_reveals(hint, p1))
+                printf("useradd: the hint contains the password; no hint saved.\n");
+            else if (tdsh_user_hint_set(session->username, argv[1], hint))
+                printf("useradd: hint not saved.\n");
         }
     }
-    volatile char *a=p1,*b=p2;for(unsigned i=0;i<sizeof(p1);i++)a[i]=b[i]=0;
-    if(rc)printf("useradd: account not created (%d)\n",rc);else printf("Created %s (%s).\n",argv[1],role==TDSH_ROLE_ADMIN?"admin":"user");
-    return rc?1:0;
+    volatile char *a = p1, *b = p2;
+    for (unsigned i = 0; i < sizeof(p1); i++)
+        a[i] = b[i] = 0;
+    if (rc)
+        printf("useradd: account not created (%d)\n", rc);
+    else
+        printf("Created %s (%s).\n", argv[1], role == TDSH_ROLE_ADMIN ? "admin" : "user");
+    return rc ? 1 : 0;
 }
 
 int tdsh_cmd_userdel(tdsh_session_t *session, int argc, char **argv)
 {
-    if (argc<2 || !access_can_manage(session->username, argv[1]))
+    if (argc < 2 || !access_can_manage(session->username, argv[1]))
     {
         printf("tdsh: permission denied: root required\n");
         return 1;
@@ -439,7 +504,8 @@ int tdsh_cmd_userdel(tdsh_session_t *session, int argc, char **argv)
         char pass[129] = {0};
         bool ok = !read_password("Password for user being deleted: ", pass, sizeof(pass)) && tdsh_user_authenticate(argv[1], pass);
         volatile char *wipe = pass;
-        for (unsigned i = 0; i < sizeof(pass); i++) wipe[i] = 0;
+        for (unsigned i = 0; i < sizeof(pass); i++)
+            wipe[i] = 0;
         if (!ok)
         {
             printf("Incorrect password.\n");
@@ -496,17 +562,19 @@ int tdsh_cmd_login(tdsh_session_t *session, int argc, char **argv)
         printf("No user found named '%s'.\n", argv[1]);
         return 1;
     }
-    char pass[129]={0};
+    char pass[129] = {0};
     if (read_password("Password: ", pass, sizeof(pass)))
         return 1;
-    uint32_t generation=tdsh_user_login(argv[1], pass);
-    volatile char *wipe=pass;for(unsigned i=0;i<sizeof(pass);i++)wipe[i]=0;
+    uint32_t generation = tdsh_user_login(argv[1], pass);
+    volatile char *wipe = pass;
+    for (unsigned i = 0; i < sizeof(pass); i++)
+        wipe[i] = 0;
     if (!generation)
     {
         printf("Incorrect password.\n");
         return 1;
     }
-    if (tdsh_session_set_user_generation(session, argv[1],generation) != 0)
+    if (tdsh_session_set_user_generation(session, argv[1], generation) != 0)
         return 1;
     printf("Login successful.\n");
     if (tdsh_is_local_console_task())
@@ -566,7 +634,7 @@ int tdsh_cmd_passwd(tdsh_session_t *session, int argc, char **argv)
         printf("Passwords do not match.\n");
         return 1;
     }
-    if (tdsh_user_password_set(session->username,session->username,oldp,p1) != 0)
+    if (tdsh_user_password_set(session->username, session->username, oldp, p1) != 0)
     {
         printf("tdsh: failed to save password\n");
         return 1;
@@ -670,7 +738,8 @@ int tdsh_cmd_bootuser(tdsh_session_t *session, int argc, char **argv)
         printf("tdsh: permission denied: root required\n");
         return 1;
     }
-    if(!strcmp(argv[1],"--require-password")||!strcmp(argv[1],"off"))return tdsh_boot_login_require_password()?1:0;
+    if (!strcmp(argv[1], "--require-password") || !strcmp(argv[1], "off"))
+        return tdsh_boot_login_require_password() ? 1 : 0;
     if (!tdsh_user_exists(argv[1]))
     {
         printf("No user found named '%s'.\n", argv[1]);

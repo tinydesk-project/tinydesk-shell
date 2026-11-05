@@ -437,7 +437,7 @@ int tdsh_cmd_network(tdsh_session_t *session, int argc, char **argv)
 {
     /* Device-wide settings require the delegated network permission. */
     if (argc == 3 && (strcmp(argv[1], "mode") == 0 || strcmp(argv[1], "autowifi") == 0) &&
-        !tdsh_session_has_right(session,TDSH_RIGHT_NETWORK))
+        !tdsh_session_has_right(session, TDSH_RIGHT_NETWORK))
     {
         printf("network: permission denied: network permission required\n");
         return 1;

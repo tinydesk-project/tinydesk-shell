@@ -59,10 +59,10 @@ extern "C" {
 #define TDSH_PARTITION_LABEL "storage"
 #endif
 
-#define TDSH_CMD_ROOT_ONLY   (1u << 0)
-#define TDSH_CMD_INTERACTIVE (1u << 1)
-#define TDSH_CMD_BG_ALLOWED  (1u << 2)
-#define TDSH_CMD_ADMIN_ONLY (1u << 3)
+#define TDSH_CMD_ROOT_ONLY    (1u << 0)
+#define TDSH_CMD_INTERACTIVE  (1u << 1)
+#define TDSH_CMD_BG_ALLOWED   (1u << 2)
+#define TDSH_CMD_ADMIN_ONLY   (1u << 3)
 #define TDSH_CMD_RIGHT(right) ((uint32_t)(right) << 8)
 
 #define TDSH_TERM_CAP_ANSI       (1u << 0)

@@ -408,22 +408,31 @@ int tdsh_console_readline(const char *prompt, char *buf, size_t capacity, bool e
 }
 
 static void (*s_console_flush)(void);
-void tdsh_espidf_set_console_flush(void (*flush)(void)){s_console_flush=flush;}
-int tdsh_session_set_user_generation(tdsh_session_t *session, const char *username,uint32_t generation)
+void tdsh_espidf_set_console_flush(void (*flush)(void))
+{
+    s_console_flush = flush;
+}
+int tdsh_session_set_user_generation(tdsh_session_t *session, const char *username, uint32_t generation)
 {
     if (!session || !username || username[0] == '\0')
         return -EINVAL;
     if (strlen(username) >= sizeof(session->username))
         return -ENAMETOOLONG;
-    uint32_t current=tdsh_user_generation(username);
-    if(!current||(generation&&generation!=current))return -EACCES;
-    if(session==&s_session){
-        taskENTER_CRITICAL(&s_user_mux);s_user_switching=true;taskEXIT_CRITICAL(&s_user_mux);
-        session->logout_requested=true;if(s_console_flush)s_console_flush();
+    uint32_t current = tdsh_user_generation(username);
+    if (!current || (generation && generation != current))
+        return -EACCES;
+    if (session == &s_session)
+    {
+        taskENTER_CRITICAL(&s_user_mux);
+        s_user_switching = true;
+        taskEXIT_CRITICAL(&s_user_mux);
+        session->logout_requested = true;
+        if (s_console_flush)
+            s_console_flush();
     }
 
     snprintf(session->username, sizeof(session->username), "%s", username);
-    session->user_generation=generation?generation:current;
+    session->user_generation = generation ? generation : current;
     memset(session->vars, 0, sizeof(session->vars));
     if (strcmp(username, "root") == 0)
     {
@@ -443,17 +452,19 @@ int tdsh_session_set_user_generation(tdsh_session_t *session, const char *userna
     }
 
     session->logout_requested = false;
-    if(session==&s_session){
+    if (session == &s_session)
+    {
         taskENTER_CRITICAL(&s_user_mux);
-        memcpy(s_published_user,session->username,sizeof(s_published_user));
-        s_published_generation=session->user_generation;s_user_switching=false;
+        memcpy(s_published_user, session->username, sizeof(s_published_user));
+        s_published_generation = session->user_generation;
+        s_user_switching = false;
         taskEXIT_CRITICAL(&s_user_mux);
     }
     return 0;
 }
-int tdsh_session_set_user(tdsh_session_t *session,const char *username)
+int tdsh_session_set_user(tdsh_session_t *session, const char *username)
 {
-    return tdsh_session_set_user_generation(session,username,0);
+    return tdsh_session_set_user_generation(session, username, 0);
 }
 
 
@@ -492,24 +503,29 @@ static bool s_switch_pending;
 
 void tdsh_espidf_console_set_user(const char *username)
 {
-    char target[TDSH_USERNAME_MAX]={0};
-    snprintf(target,sizeof(target),"%s",username?username:"");
+    char target[TDSH_USERNAME_MAX] = {0};
+    snprintf(target, sizeof(target), "%s", username ? username : "");
     taskENTER_CRITICAL(&s_user_mux);
-    s_user_switching=true;
-    memcpy(s_switch_user,target,sizeof(s_switch_user));
+    s_user_switching = true;
+    memcpy(s_switch_user, target, sizeof(s_switch_user));
     s_switch_pending = true;
     taskEXIT_CRITICAL(&s_user_mux);
 }
 
 const char *tdsh_espidf_console_user(void)
 {
-    static char user[TDSH_USERNAME_MAX];uint32_t generation;
+    static char user[TDSH_USERNAME_MAX];
+    uint32_t generation;
     taskENTER_CRITICAL(&s_user_mux);
-    bool blocked=s_user_switching||s_switch_pending;
-    if(blocked)user[0]=0;else memcpy(user,s_published_user,sizeof(user));
-    generation=s_published_generation;
+    bool blocked = s_user_switching || s_switch_pending;
+    if (blocked)
+        user[0] = 0;
+    else
+        memcpy(user, s_published_user, sizeof(user));
+    generation = s_published_generation;
     taskEXIT_CRITICAL(&s_user_mux);
-    if(!user[0]||!generation||tdsh_user_generation(user)!=generation)user[0]=0;
+    if (!user[0] || !generation || tdsh_user_generation(user) != generation)
+        user[0] = 0;
     return user;
 }
 
@@ -518,12 +534,19 @@ static bool apply_user_switch(void)
 {
     char target[TDSH_USERNAME_MAX];
     taskENTER_CRITICAL(&s_user_mux);
-    bool pending=s_switch_pending;
-    memcpy(target,s_switch_user,sizeof(target));
-    s_switch_pending=false;
+    bool pending = s_switch_pending;
+    memcpy(target, s_switch_user, sizeof(target));
+    s_switch_pending = false;
     taskEXIT_CRITICAL(&s_user_mux);
-    if(!pending)return false;
-    if(!target[0]){s_session.logout_requested=true;if(s_console_flush)s_console_flush();return false;}
+    if (!pending)
+        return false;
+    if (!target[0])
+    {
+        s_session.logout_requested = true;
+        if (s_console_flush)
+            s_console_flush();
+        return false;
+    }
     if (!tdsh_user_exists(target) || tdsh_session_set_user(&s_session, target) != 0)
         return false;
     printf("\033[2J\033[HSession for %s.\r\n\r\n", s_session.username);
@@ -532,7 +555,9 @@ static bool apply_user_switch(void)
 
 static void local_login_loop(void)
 {
-    taskENTER_CRITICAL(&s_user_mux);s_user_switching=true;taskEXIT_CRITICAL(&s_user_mux);
+    taskENTER_CRITICAL(&s_user_mux);
+    s_user_switching = true;
+    taskEXIT_CRITICAL(&s_user_mux);
     for (;;)
     {
         if (apply_user_switch())
@@ -552,7 +577,7 @@ static void local_login_loop(void)
         }
 
         n = tdsh_console_readline("Password: ", pass, sizeof(pass), false);
-        uint32_t generation=n>0?tdsh_user_login(user,pass):0;
+        uint32_t generation = n > 0 ? tdsh_user_login(user, pass) : 0;
         if (!generation)
         {
             memset(pass, 0, sizeof(pass));
@@ -561,7 +586,7 @@ static void local_login_loop(void)
         }
 
         memset(pass, 0, sizeof(pass));
-        if (tdsh_session_set_user_generation(&s_session, user,generation) != 0)
+        if (tdsh_session_set_user_generation(&s_session, user, generation) != 0)
         {
             printf("tdsh: unable to start user session\n");
             continue;
@@ -591,9 +616,11 @@ static void local_console_loop(void)
     {
         char prompt[TDSH_MAX_PATH + 96];
         char line[TDSH_MAX_LINE + 1];
-        if(s_session.logout_requested||!tdsh_session_valid(&s_session))local_login_loop();
+        if (s_session.logout_requested || !tdsh_session_valid(&s_session))
+            local_login_loop();
         (void)apply_user_switch();
-        if(s_session.logout_requested)continue;
+        if (s_session.logout_requested)
+            continue;
         build_prompt(&s_session, prompt, sizeof(prompt));
 
         int n = tdsh_interactive_readline(&s_session, prompt, line, sizeof(line));
