@@ -173,6 +173,12 @@ int main(void)
     assert(!tdsh_core_init(&config));
     assert(tdsh_user_authenticate("root", DEFAULT_ROOT_PASSWORD));
     assert(!tdsh_boot_user_default("root"));
+    /* root's hint gives the factory password away while root has it,
+     * also over a hint stored before a reset. */
+    char factory_hint[TDSH_HINT_MAX];
+    assert(!tdsh_user_hint_set("root", "root", "stale"));
+    assert(!tdsh_user_hint_get("root", factory_hint, sizeof(factory_hint)) &&
+           !strcmp(factory_hint, "Type: " DEFAULT_ROOT_PASSWORD));
     assert(!tdsh_user_remember_allowed("root"));
     assert(!tdsh_remembered_user(remembered, sizeof(remembered)));
     assert(!tdsh_user_authenticate("root", "wrong"));
@@ -263,6 +269,9 @@ int main(void)
     assert(!tdsh_user_hint_get("operator", hint, sizeof(hint)) && !hint[0]);
     assert(!tdsh_user_hint_set("alice", "alice", ""));
     assert(!tdsh_user_hint_get("alice", hint, sizeof(hint)) && !hint[0]);
+    /* With its own password, root's stored hint shows again. */
+    assert(!tdsh_user_password_set("root", "root", DEFAULT_ROOT_PASSWORD, "root-password"));
+    assert(!tdsh_user_hint_get("root", factory_hint, sizeof(factory_hint)) && !strcmp(factory_hint, "stale"));
     /* Legacy password DB without sidecar keeps passwords and defaults to User. */
     item("access", false)->key[0] = 0;
     reboot_store();

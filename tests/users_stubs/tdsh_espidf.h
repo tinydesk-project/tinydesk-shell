@@ -9,6 +9,7 @@
 #endif
 #define TDSH_USERNAME_MAX          32
 #define TDSH_FACTORY_ROOT_PASSWORD "TestFactoryOnly"
+#define TDSH_FACTORY_HINT          "Type: " TDSH_FACTORY_ROOT_PASSWORD
 #define TDSH_STARTUP_FILE          ".tdshrc.tdsh"
 typedef struct
 {

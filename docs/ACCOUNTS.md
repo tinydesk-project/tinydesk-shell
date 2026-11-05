@@ -21,7 +21,9 @@ a hint (anyone may: TinyDesk shows it at Sign in); `tdsh_user_hint_set` is
 allowed for the account itself and whoever may manage it. Hints live in NVS
 (`ush_users` / `hints`, up to 63 bytes each) by account name and are read only
 when needed; creating or deleting an account removes a hint left under its
-name, while a password change keeps it.
+name, while a password change keeps it. While root still has the factory
+password, its hint is always `Type: TinyDesk` (`TDSH_FACTORY_HINT`), also over
+a stored one; once root has its own password, its stored hint (if any) shows.
 
 Every non-root role retains its home jail. Shared permission adds `/shared`;
 it never opens `/root` or another home. Root-only raw memory, executable native

@@ -51,12 +51,22 @@ bool tdsh_hint_reveals(const char *hint,const char *password)
     for(size_t i=0;i+n<=m;i++)if(!strncasecmp(hint+i,password,n))return true;
     return false;
 }
+/* root still has the factory password, which is printed in every manual. */
+static bool root_has_factory_password(int idx)
+{
+    uint8_t hash[USER_HASH_LEN];
+    return make_hash(DEFAULT_ROOT_PASSWORD,s_db.entries[idx].salt,hash)==0&&hash_equal(hash,s_db.entries[idx].hash,USER_HASH_LEN);
+}
 int tdsh_user_hint_get(const char *name,char *out,size_t size)
 {
     USERS_GUARD;
     if(!out||!size)return -EINVAL;
     out[0]=0;
-    if(!s_ready||!name||find_user(name)<0)return -ENOENT;
+    int idx=s_ready&&name?find_user(name):-1;
+    if(idx<0)return -ENOENT;
+    /* Until it is changed, the factory password is the hint: a hint left
+     * from before a reset would be wrong. */
+    if(!strcmp(name,"root")&&root_has_factory_password(idx)){snprintf(out,size,"%s",TDSH_FACTORY_HINT);return 0;}
     hint_db_t *db=hint_load();if(!db)return -ENOMEM;
     hint_entry_t *e=hint_find(db,name);if(e)snprintf(out,size,"%s",e->hint);
     free(db);return 0;

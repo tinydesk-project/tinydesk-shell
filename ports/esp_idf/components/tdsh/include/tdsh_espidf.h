@@ -224,8 +224,10 @@ int tdsh_eth_get_info(tdsh_eth_info_t *info);
 int tdsh_cmd_lan(tdsh_session_t *session, int argc, char **argv);
 
 /* The password root has on a fresh device. It is public (the docs give it):
- * remote logins refuse it, and passwd says it while root still has it. */
+ * remote logins refuse it, and passwd says it while root still has it.
+ * It is also root's password hint until root has another password. */
 #define TDSH_FACTORY_ROOT_PASSWORD "TinyDesk"
+#define TDSH_FACTORY_HINT          "Type: " TDSH_FACTORY_ROOT_PASSWORD
 
 /* SMB2/3 mapped network drives. */
 esp_err_t tdsh_netmount_init(void);
