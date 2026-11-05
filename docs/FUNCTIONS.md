@@ -116,6 +116,11 @@ int tdsh_terminal_readline(tdsh_session_t *session,
 ```c
 esp_err_t tdsh_espidf_init(const tdsh_espidf_config_t *config);
 esp_err_t tdsh_espidf_start(void);
+void tdsh_espidf_run_console(void);
+void tdsh_espidf_console_set_user(const char *username);
+const char *tdsh_espidf_console_user(void);
+void tdsh_espidf_set_console_columns(int (*columns)(void));
+void tdsh_espidf_set_console_flush(void (*flush)(void));
 const tdsh_platform_api_t *tdsh_espidf_platform(void);
 int tdsh_espidf_register_commands(const tdsh_espidf_config_t *config);
 esp_err_t tdsh_init(const tdsh_config_t *config);
@@ -123,15 +128,37 @@ esp_err_t tdsh_start(void);
 int tdsh_console_readline(const char *prompt, char *buf, size_t capacity, bool echo_input);
 int tdsh_interactive_readline(tdsh_session_t *session, const char *prompt, char *buf, size_t capacity);
 bool tdsh_is_local_console_task(void);
-void tdsh_espidf_set_console_columns(int (*columns)(void));
-int tdsh_ssh_terminal_columns(void);
+bool tdsh_is_physical_console(void);
+bool tdsh_console_begin_recovery(void);
+void tdsh_console_end_recovery(void);
+bool tdsh_console_mark_remote(void);
 int tdsh_session_set_user(tdsh_session_t *session, const char *username);
+int tdsh_session_set_user_generation(tdsh_session_t *session, const char *username, uint32_t generation);
 int tdsh_run_user_startup(tdsh_session_t *session);
 esp_err_t tdsh_fs_init(bool format_if_mount_failed);
 void tdsh_fs_print_info(void);
 esp_err_t tdsh_users_init(void);
 bool tdsh_user_exists(const char *username);
 bool tdsh_user_authenticate(const char *username, const char *password);
+uint32_t tdsh_user_login(const char *username, const char *password);
+int tdsh_user_list(int index, tdsh_user_info_t *out);
+tdsh_role_t tdsh_user_role(const char *username);
+uint32_t tdsh_user_rights(const char *username);
+uint32_t tdsh_user_generation(const char *username);
+int tdsh_user_create(const char *actor, const char *name, const char *password, tdsh_role_t role, uint32_t rights);
+int tdsh_user_access_set(const char *actor, const char *name, tdsh_role_t role, uint32_t rights);
+int tdsh_user_password_set(const char *actor, const char *name, const char *old_password, const char *new_password);
+int tdsh_user_hint_get(const char *name, char *out, size_t size);
+int tdsh_user_hint_set(const char *actor, const char *name, const char *hint);
+bool tdsh_hint_reveals(const char *hint, const char *password);
+bool tdsh_remembered_user(char *out, size_t size);
+uint32_t tdsh_remembered_login(char *out, size_t size);
+bool tdsh_user_remember_allowed(const char *username);
+int tdsh_boot_login_require_password(void);
+int tdsh_cmd_userrole(tdsh_session_t *session, int argc, char **argv);
+int tdsh_cmd_userrights(tdsh_session_t *session, int argc, char **argv);
+bool tdsh_remote_access_ready(void);
+bool tdsh_user_authenticate_remote(const char *username, const char *password);
 int tdsh_cmd_users(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_useradd(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_userdel(tdsh_session_t *session, int argc, char **argv);
@@ -142,6 +169,7 @@ int tdsh_cmd_bootuser(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_rootrecover(tdsh_session_t *session, int argc, char **argv);
 int tdsh_boot_user_get(char *out, size_t out_size);
 int tdsh_boot_user_set(const char *username);
+int tdsh_boot_user_default(const char *username);
 esp_err_t tdsh_network_init(void);
 bool tdsh_network_is_online(void);
 tdsh_network_mode_t tdsh_network_get_mode(void);
@@ -159,6 +187,11 @@ int tdsh_cmd_wificonnect(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifidisconnect(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiadd(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiremove(tdsh_session_t *session, int argc, char **argv);
+int tdsh_wifi_scan_list(tdsh_wifi_ap_t *out, int max, const char *user);
+int tdsh_wifi_save(const char *ssid, const char *password, const char *user);
+int tdsh_wifi_forget(const char *ssid, const char *user);
+int tdsh_wifi_connect_saved(const char *ssid, const char *user);
+int tdsh_wifi_disconnect_now(void);
 esp_err_t tdsh_eth_start(void);
 esp_err_t tdsh_eth_stop(void);
 bool tdsh_eth_is_connected(void);
@@ -169,7 +202,18 @@ esp_err_t tdsh_netmount_init(void);
 int tdsh_cmd_netmount(tdsh_session_t *session, int argc, char **argv);
 bool tdsh_netmount_translate_logical(const char *logical, char *real_out, size_t real_out_size);
 void tdsh_netmount_remove_owner(const char *owner);
+esp_err_t tdsh_sdcard_init(void);
+esp_err_t tdsh_sdcard_mount(void);
+esp_err_t tdsh_sdcard_unmount(void);
+bool tdsh_sdcard_configured(void);
+bool tdsh_sdcard_mounted(void);
+void *tdsh_sdcard_card(void);
+bool tdsh_sdcard_translate_logical(const char *logical, char *real_out, size_t real_out_size);
+int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
 void tdsh_time_sync_start(void);
+bool tdsh_time_auto(void);
+int tdsh_time_set_auto(bool on);
+int tdsh_time_sync_now(void);
 int tdsh_cmd_tz(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_date(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_cal(tdsh_session_t *session, int argc, char **argv);
@@ -179,7 +223,11 @@ int tdsh_cmd_ssh(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_write(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_nano(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_hwtest(tdsh_session_t *session, int argc, char **argv);
-int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
+bool tdsh_ssh_is_running(uint16_t *port, int *clients);
+int tdsh_ssh_set_running(bool on);
+int tdsh_ssh_terminal_columns(void);
+bool tdsh_ftp_is_running(uint16_t *port);
+int tdsh_ftp_set_running(bool on);
 ```
 
 ## Registered commands
@@ -202,7 +250,7 @@ int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
 | echo | echo [text ...] | Print text (generic shell redirection is supported) |
 | test | test EXPRESSION | Evaluate file, string or integer conditions |
 | [ | [ EXPRESSION ] | Bracket form of test |
-| tdsh | tdsh run <file.ush\|directory> [--bg] | Run native .ush shell scripts |
+| tdsh | tdsh run <file.tdsh\|directory> [--bg] | Run native .tdsh shell scripts |
 | whoami | whoami | Print current user |
 | platform | platform | Show active TinyDesk Shell platform port |
 | free | free | Show TinyDesk Shell core allocation statistics |
@@ -213,8 +261,10 @@ int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
 | peek | peek -l \| peek [-w 8\|16\|32] <address> [count] | Read memory the port allows (root; only on ports with `mem_regions`: the ESP32, ESP32-C6 and ESP32-S3 firmware) |
 | poke | poke [-w 8\|16\|32] <address> <value> | Write memory the port allows (root; only on ports with `mem_regions`; on the ESP32 boards the GPIO output registers) |
 | users | users | List TinyDesk Shell users |
-| useradd | useradd <username> | Create a user |
+| useradd | useradd <username> [admin\|user] | Create an account (asks for the password and an optional hint) |
 | userdel | userdel <username> [-f] | Delete a user |
+| userrole | userrole <username> [admin\|user] | Show or set account role |
+| userrights | userrights <username> [+right\|-right ...] | Show or share account permissions |
 | login | login <username> | Login as another user |
 | logout | logout | Logout current session |
 | bootuser | bootuser [username] | Show/set physical-console boot user |
@@ -238,7 +288,7 @@ int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
 | ifconfig | ifconfig | Show network interfaces and default route |
 | ping | ping [-c count] <host/address ...> | Send ICMP echo requests (4 per host unless -c) |
 | ftp | ftp <start\|stop\|restart\|status> [port] | Control FTP server |
-| ssh | ssh <start\|stop\|restart\|status> [port] | Control SSH/SFTP server |
+| ssh | ssh <start\|stop\|restart\|status> [port] \| ssh hostkey [new] | Control SSH/SFTP server; show or replace its host key |
 | write | write <file> [text ...] | Line editor or direct file writer |
 | nano | nano <file> | Full-screen VT100 nano-style editor |
 | gpio | gpio <init\|get\|set> ... | Configure and control GPIO |
