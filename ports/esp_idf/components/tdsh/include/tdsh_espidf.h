@@ -110,6 +110,12 @@ uint32_t tdsh_user_generation(const char *username);
 int tdsh_user_create(const char *actor,const char *name,const char *password,tdsh_role_t role,uint32_t rights);
 int tdsh_user_access_set(const char *actor,const char *name,tdsh_role_t role,uint32_t rights);
 int tdsh_user_password_set(const char *actor,const char *name,const char *old_password,const char *new_password);
+/* Password hints: shown at sign-in to anyone at the device. Set by the
+ * account itself or whoever may manage it; "" removes it. */
+#define TDSH_HINT_MAX 64
+int tdsh_user_hint_get(const char *name,char *out,size_t size);
+int tdsh_user_hint_set(const char *actor,const char *name,const char *hint);
+bool tdsh_hint_reveals(const char *hint,const char *password);
 bool tdsh_remembered_user(char *out,size_t size);
 uint32_t tdsh_remembered_login(char *out,size_t size);
 bool tdsh_user_remember_allowed(const char *username);

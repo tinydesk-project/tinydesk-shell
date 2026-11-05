@@ -14,6 +14,15 @@ Changing role resets rights to that role's defaults within the actor's grant
 limit. Admin plus users permission can manage other accounts with rights no
 greater than its own. It cannot edit root or elevate itself.
 
+Password hints: `useradd` and `passwd` ask for an optional hint after the
+password (in `passwd`, Enter keeps the old one and `-` removes it), and refuse
+one that contains the password (`tdsh_hint_reveals`). `tdsh_user_hint_get` reads
+a hint (anyone may: TinyDesk shows it at Sign in); `tdsh_user_hint_set` is
+allowed for the account itself and whoever may manage it. Hints live in NVS
+(`ush_users` / `hints`, up to 63 bytes each) by account name and are read only
+when needed; creating or deleting an account removes a hint left under its
+name, while a password change keeps it.
+
 Every non-root role retains its home jail. Shared permission adds `/shared`;
 it never opens `/root` or another home. Root-only raw memory, executable native
 code, firmware/board configuration and existing per-resource ownership checks

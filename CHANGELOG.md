@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+* **Password hints (ESP-IDF port):** `useradd` and `passwd` ask for an
+  optional hint after the password; one that contains the password is
+  refused. `tdsh_user_hint_get()`, `tdsh_user_hint_set()` and
+  `tdsh_hint_reveals()`; NVS `ush_users` / `hints`. Creating or deleting
+  an account removes a hint left under its name. See `docs/ACCOUNTS.md`.
 * **Account roles and rights (ESP-IDF port):** every account other than
   root is an Admin or a User with rights: `users`, `system`, `network`,
   `hardware`, `shared`, `time` and `apps`. New Users get `apps`, new

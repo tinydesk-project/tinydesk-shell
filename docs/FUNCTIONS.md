@@ -222,7 +222,7 @@ int tdsh_cmd_sd(tdsh_session_t *session, int argc, char **argv);
 | tz | tz [[+\|-]HH:MM] | Show/set user timezone offset |
 | date | date | Show date/time using user timezone |
 | cal | cal | Print current month calendar |
-| passwd | passwd | Change current user's password |
+| passwd | passwd | Change current user's password (and its hint) |
 | idfinfo | idfinfo | Show ESP-IDF/chip information |
 | heap | heap | Show ESP-IDF heap and TinyDesk Shell tracked allocations |
 | reboot | reboot | Restart the MCU |

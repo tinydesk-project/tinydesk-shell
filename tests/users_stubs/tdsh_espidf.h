@@ -18,6 +18,10 @@ tdsh_role_t tdsh_user_role(const char *);
 uint32_t tdsh_user_rights(const char *);
 int tdsh_user_create(const char *,const char *,const char *,tdsh_role_t,uint32_t);
 int tdsh_user_password_set(const char *,const char *,const char *,const char *);
+#define TDSH_HINT_MAX 64
+int tdsh_user_hint_get(const char *,char *,size_t);
+int tdsh_user_hint_set(const char *,const char *,const char *);
+bool tdsh_hint_reveals(const char *,const char *);
 int tdsh_boot_user_get(char *,size_t);
 int tdsh_boot_login_require_password(void);
 int tdsh_console_readline(const char *,char *,size_t,bool);

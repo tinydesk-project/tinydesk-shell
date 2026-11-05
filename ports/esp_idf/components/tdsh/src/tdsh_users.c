@@ -3,7 +3,9 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -31,6 +33,7 @@ static void users_unguard(users_guard_t *guard){if(guard->locked)xSemaphoreGiveR
 #define USERS_GUARD users_guard_t guard __attribute__((cleanup(users_unguard)))={s_users_mutex&&xSemaphoreTakeRecursive(s_users_mutex,portMAX_DELAY)==pdTRUE}
 
 static const char *TAG = "tdsh-users";
+static void hint_forget(const char *name);   /* tdsh_users_hint.inc */
 
 /* The factory password root gets on a fresh device (change it with passwd). */
 #define DEFAULT_ROOT_PASSWORD TDSH_FACTORY_ROOT_PASSWORD
@@ -395,6 +398,11 @@ int tdsh_cmd_useradd(tdsh_session_t *session,int argc,char **argv)
     if(!read_password("New password: ",p1,sizeof(p1))&&!read_password("Retype new password: ",p2,sizeof(p2))&&!strcmp(p1,p2)){
         uint32_t rights=(role==TDSH_ROLE_ADMIN?TDSH_RIGHTS_ADMIN:TDSH_RIGHTS_USER)&tdsh_session_rights(session);
         rc=tdsh_user_create(session->username,argv[1],p1,role,rights);
+        char hint[TDSH_HINT_MAX]={0};
+        if(!rc&&tdsh_console_readline("Password hint (optional, shown at Sign in): ",hint,sizeof(hint),true)>0){
+            if(tdsh_hint_reveals(hint,p1))printf("useradd: the hint contains the password; no hint saved.\n");
+            else if(tdsh_user_hint_set(session->username,argv[1],hint))printf("useradd: hint not saved.\n");
+        }
     }
     volatile char *a=p1,*b=p2;for(unsigned i=0;i<sizeof(p1);i++)a[i]=b[i]=0;
     if(rc)printf("useradd: account not created (%d)\n",rc);else printf("Created %s (%s).\n",argv[1],role==TDSH_ROLE_ADMIN?"admin":"user");
@@ -461,6 +469,7 @@ int tdsh_cmd_userdel(tdsh_session_t *session, int argc, char **argv)
         return 1;
     }
     s_verified[idx] = false;
+    hint_forget(argv[1]);
     /* Keep removal and name reuse serialized with account creation. */
     tdsh_netmount_remove_owner(argv[1]);
     char home[TDSH_MAX_PATH + sizeof(TDSH_MOUNT_POINT) + 8];
@@ -563,6 +572,16 @@ int tdsh_cmd_passwd(tdsh_session_t *session, int argc, char **argv)
         return 1;
     }
     printf("Password updated.\n");
+    char hint[TDSH_HINT_MAX] = {0};
+    if (tdsh_console_readline("Password hint (Enter: keep it, -: remove it): ", hint, sizeof(hint), true) > 0)
+    {
+        if (!strcmp(hint, "-"))
+            hint[0] = 0;
+        if (tdsh_hint_reveals(hint, p1))
+            printf("The hint contains the password; the old hint is kept.\n");
+        else if (tdsh_user_hint_set(session->username, session->username, hint))
+            printf("tdsh: failed to save the hint\n");
+    }
     return 0;
 }
 
@@ -667,3 +686,4 @@ int tdsh_cmd_bootuser(tdsh_session_t *session, int argc, char **argv)
 }
 
 #include "tdsh_users_access.inc"
+#include "tdsh_users_hint.inc"

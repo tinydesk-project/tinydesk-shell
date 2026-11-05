@@ -68,8 +68,31 @@ int main(void)
     fail_writes=0;assert(!tdsh_boot_login_require_password());assert(!tdsh_boot_user_set("alice"));assert(!tdsh_remembered_user(remembered,sizeof(remembered)));
     assert(!item("proof",false));
     assert(tdsh_user_login("alice","new-password"));assert(tdsh_remembered_user(remembered,sizeof(remembered)));assert(!tdsh_boot_login_require_password());
+    /* Password hints: self or a manager sets them, they outlive password
+     * changes and restarts, and never pass to a new account of the name. */
+    char hint[TDSH_HINT_MAX];
+    assert(!tdsh_user_hint_get("alice",hint,sizeof(hint))&&!hint[0]);
+    assert(!tdsh_user_hint_set("alice","alice","first pet"));
+    assert(!tdsh_user_hint_get("alice",hint,sizeof(hint))&&!strcmp(hint,"first pet"));
+    assert(tdsh_user_hint_set("operator","alice","x")==-EACCES);
+    assert(tdsh_user_hint_set("admin","root","x")==-EACCES);
+    assert(tdsh_user_hint_set("nobody","nobody","x")==-ENOENT);
+    assert(!tdsh_user_hint_set("root","operator","blue"));
+    assert(tdsh_user_hint_set("alice","alice","two\nlines")==-EINVAL);
+    char long_hint[TDSH_HINT_MAX+1];memset(long_hint,'a',TDSH_HINT_MAX);long_hint[TDSH_HINT_MAX]=0;
+    assert(tdsh_user_hint_set("alice","alice",long_hint)==-EINVAL);
+    fail_writes=1;assert(tdsh_user_hint_set("alice","alice","lost")==-EIO);fail_writes=0;
+    assert(!tdsh_user_password_set("alice","alice","new-password","newer-password"));
+    reboot_store();assert(!tdsh_user_hint_get("alice",hint,sizeof(hint))&&!strcmp(hint,"first pet"));
+    assert(tdsh_hint_reveals("my NEWER-password!","newer-password")&&!tdsh_hint_reveals("first pet","newer-password"));
+    assert(tdsh_hint_reveals("pw","pw")&&!tdsh_hint_reveals("pwn","pw")&&!tdsh_hint_reveals("","pw"));
+    tdsh_session_t root_session;assert(!tdsh_session_init(&root_session,"root",true));
+    char *del[]={"userdel","operator","-f"};assert(!tdsh_cmd_userdel(&root_session,3,del));
+    assert(!tdsh_user_create("root","operator","pw2",TDSH_ROLE_USER,TDSH_RIGHT_APPS));
+    assert(!tdsh_user_hint_get("operator",hint,sizeof(hint))&&!hint[0]);
+    assert(!tdsh_user_hint_set("alice","alice",""));assert(!tdsh_user_hint_get("alice",hint,sizeof(hint))&&!hint[0]);
     /* Legacy password DB without sidecar keeps passwords and defaults to User. */
     item("access",false)->key[0]=0;reboot_store();assert(tdsh_user_authenticate("admin","password-b"));assert(tdsh_user_role("admin")==TDSH_ROLE_USER);assert(tdsh_user_rights("admin")==TDSH_RIGHT_APPS);
     item_t *db=item("db",false);db->value[0]^=1;s_ready=false;assert(tdsh_users_init()==ESP_ERR_INVALID_STATE);assert(!tdsh_user_authenticate("root",DEFAULT_ROOT_PASSWORD));
-    assert(lock_depth==0);puts("PASS: production account store, legacy credentials, roles, escalation denial, NVS errors, remember proofs and corrupt-store fail-closed.");return 0;
+    assert(lock_depth==0);puts("PASS: production account store, legacy credentials, roles, escalation denial, NVS errors, remember proofs, password hints and corrupt-store fail-closed.");return 0;
 }

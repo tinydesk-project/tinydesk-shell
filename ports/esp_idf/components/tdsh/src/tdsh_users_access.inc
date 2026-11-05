@@ -75,7 +75,7 @@ int tdsh_user_create(const char *actor,const char *name,const char *password,tds
     user_entry_t *e=&s_db.entries[i];memset(e,0,sizeof(*e));e->used=1;snprintf(e->name,sizeof(e->name),"%s",name);esp_fill_random(e->salt,USER_SALT_LEN);
     s_roles[i]=(uint8_t)role;s_rights[i]=rights;s_verified[i]=false;s_db.count++;
     if(make_hash(password,e->salt,e->hash)||save_db()!=ESP_OK){memset(e,0,sizeof(*e));s_roles[i]=0;s_rights[i]=TDSH_RIGHTS_USER;s_db.count--;return -EIO;}
-    ensure_user_startup_file(name);return 0;
+    hint_forget(name);ensure_user_startup_file(name);return 0;
 }
 int tdsh_user_access_set(const char *actor,const char *name,tdsh_role_t role,uint32_t rights)
 {
