@@ -56,6 +56,7 @@ typedef struct
     td_sock_t fd;
     int af;
     int timeout_ms;   /* -1: blocking, 0: non-blocking, else the timeout */
+    bool connecting;  /* a non-blocking connect() still in progress */
 } td_socket_t;
 
 static const mp_obj_type_t td_socket_type;
@@ -178,6 +179,24 @@ static int wait_ready(td_socket_t *s, bool for_write, int *errcode)
     }
 }
 
+/* After a non-blocking connect(): whether it is still in progress. lwIP
+ * can report such a socket writable before the connection is up, so ask
+ * for the peer instead. A failed connect ends it too (send() then reports
+ * the error). */
+static bool still_connecting(td_socket_t *s)
+{
+    if (!s->connecting)
+        return false;
+    struct sockaddr_storage peer;
+    socklen_t len = sizeof(peer);
+    int soerr = 0;
+    socklen_t elen = sizeof(soerr);
+    if (getpeername(s->fd, (struct sockaddr *)&peer, &len) == 0 ||
+        (getsockopt(s->fd, SOL_SOCKET, SO_ERROR, (char *)&soerr, &elen) == 0 && soerr != 0))
+        s->connecting = false;
+    return s->connecting;
+}
+
 static td_socket_t *get_open(mp_obj_t self_in)
 {
     td_socket_t *s = MP_OBJ_TO_PTR(self_in);
@@ -261,6 +280,7 @@ static mp_obj_t td_socket_make(td_sock_t fd, int af)
     s->fd = fd;
     s->af = af;
     s->timeout_ms = -1;
+    s->connecting = false;
     set_nonblocking(fd);
     return MP_OBJ_FROM_PTR(s);
 }
@@ -307,6 +327,8 @@ static mp_obj_t td_socket_connect(mp_obj_t self_in, mp_obj_t addr)
     if (rc == 0)
         return mp_const_none;
     int e = sock_errno(true);
+    if (e == MP_EINPROGRESS && s->timeout_ms == 0)
+        s->connecting = true;   /* asyncio waits for it to become writable */
     if (e != MP_EINPROGRESS || s->timeout_ms == 0)
         mp_raise_OSError(e);
     wait_ready(s, true, NULL);
@@ -374,6 +396,16 @@ static mp_uint_t send_some(td_socket_t *s, const void *buf, size_t len, int *err
 {
     for (;;)
     {
+        if (still_connecting(s))
+        {
+            if (s->timeout_ms == 0)
+            {
+                *errcode = MP_EAGAIN;
+                return MP_STREAM_ERROR;
+            }
+            mp_hal_delay_ms(WAIT_SLICE_MS);   /* Ctrl+C is checked there */
+            continue;
+        }
         if (wait_ready(s, true, errcode))
             return MP_STREAM_ERROR;
         int n = send(s->fd, buf, (int)len, 0);
@@ -399,6 +431,8 @@ static mp_uint_t recv_some(td_socket_t *s, void *buf, size_t len, int *errcode)
         if (n >= 0)
             return (mp_uint_t)n;
         int e = sock_errno(false);
+        if (e == MP_ENOTCONN)
+            return 0;   /* lwIP, after the peer closed: the end, as elsewhere */
         if (e != MP_EAGAIN || s->timeout_ms == 0)
         {
             *errcode = e;
@@ -599,7 +633,7 @@ static mp_uint_t td_socket_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t 
         mp_uint_t ret = 0;
         if ((arg & MP_STREAM_POLL_RD) && ready(s->fd, false, 0))
             ret |= MP_STREAM_POLL_RD;
-        if ((arg & MP_STREAM_POLL_WR) && ready(s->fd, true, 0))
+        if ((arg & MP_STREAM_POLL_WR) && !still_connecting(s) && ready(s->fd, true, 0))
             ret |= MP_STREAM_POLL_WR;
         return ret;
     }

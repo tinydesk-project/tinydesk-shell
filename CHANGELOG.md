@@ -21,7 +21,8 @@
   TLS 1.2; certificates checked against ESP-IDF's CA bundle on the boards
   and the system's root certificates on the PC, `python/td_py_tls_ca.c`),
   a blocking `websocket` client, and from micropython-lib (MIT) `requests`,
-  `umqtt.simple`, `umqtt.robust` and `aiohttp`. The PC programs find
+  `umqtt.simple`, `umqtt.robust` and `aiohttp` (`ssl` and `requests`
+  changed to check certificates by default, `python/modules/`). The PC programs find
   mbedTLS in ESP-IDF (`TDSH_MBEDTLS_DIR`); without it they have sockets but
   no `ssl`. The generator needs MicroPython's `lib/micropython-lib`
   submodule and mbedTLS's headers (`IDF_PATH` or `MBEDTLS_INC`).

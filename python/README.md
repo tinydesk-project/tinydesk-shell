@@ -28,11 +28,15 @@ board, the PC's on Linux and Windows): there is no `network` module.
 | Module | What |
 | --- | --- |
 | `socket` | `getaddrinfo`, `socket()` with `connect`, `bind`, `listen`, `accept`, `send(all)`, `recv`, `sendto`, `recvfrom`, `settimeout`, `setblocking`, `setsockopt`; a stream (`read`, `readline`, `write`) for `ssl`, `select` and `asyncio`. Addresses are `(host, port)`; `getaddrinfo` lists IPv4 first |
-| `ssl`, `tls` | TLS 1.2 (mbedTLS). `tls.SSLContext(tls.PROTOCOL_TLS_CLIENT)` checks the server's certificate against the trusted CAs; `ssl.wrap_socket()` does not unless `cert_reqs=ssl.CERT_REQUIRED` (MicroPython's default) |
-| `requests` | HTTP and HTTPS: `requests.get(url).json()`, `post`, ... (checks certificates) |
-| `umqtt.simple`, `umqtt.robust` | MQTT 3.1.1 client: `MQTTClient(id, host, ssl=...)`, `connect`, `publish`, `subscribe`, `check_msg` |
+| `ssl`, `tls` | TLS 1.2 (mbedTLS). `ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` and `tls.SSLContext(...)` check the server's certificate against the trusted CAs (a bad one raises `ValueError` or `OSError`); `ssl.wrap_socket()` does not unless `cert_reqs=ssl.CERT_REQUIRED` (MicroPython's default) |
+| `requests` | HTTP and HTTPS: `requests.get(url).json()`, `post`, ... Checks certificates; `verify=False` does not |
+| `umqtt.simple`, `umqtt.robust` | MQTT 3.1.1 client: `MQTTClient(id, host, port=8883, ssl=ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT))` for TLS, `connect`, `publish`, `subscribe`, `check_msg` |
 | `websocket` | blocking WebSocket client: `create_connection("wss://...", timeout=10)`, `send`, `recv`, `close` (checks certificates; `verify=False` does not) |
-| `aiohttp` | asyncio HTTP client and `ws_connect` WebSockets |
+| `aiohttp` | asyncio HTTP client and `ws_connect` WebSockets (checks certificates) |
+
+`ssl` and `requests` are micropython-lib's with one change each, so that
+they check certificates by default as CPython does (`python/modules/`);
+`umqtt` and `aiohttp` are frozen unchanged.
 
 ```python
 import requests, websocket
