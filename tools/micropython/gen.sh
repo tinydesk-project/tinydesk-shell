@@ -28,7 +28,7 @@ MINGW* | MSYS*)
     native="PYTHON=python MPY_CROSS=$top/mpy-cross/build/mpy-cross.exe"
     ;;
 esac
-make clean MICROPYTHON_TOP="$top" $native >/dev/null
+make clean MICROPYTHON_TOP="$top" $native "$@" >/dev/null
 make MICROPYTHON_TOP="$top" $native "$@"
 # One line ending in the generated files, whichever system made them.
 for v in "$@"; do case "$v" in OUT=*) out=${v#OUT=} ;; esac; done

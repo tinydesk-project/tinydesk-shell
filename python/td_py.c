@@ -84,6 +84,8 @@ const char td_py_help_text[] =
     "Modules: sys, os, time, json, re, math, random, binascii, hashlib, heapq,\n"
     "collections, struct, errno, gc, select, asyncio, micropython, machine and\n"
     "neopixel (pins and buses, for root).\n"
+    "Network: socket, ssl, requests (HTTP), umqtt.simple / umqtt.robust (MQTT),\n"
+    "websocket (blocking client), aiohttp (asyncio HTTP and WebSocket).\n"
     "Files: open(), os.listdir() etc. use the shell's paths (/home/root, ...).\n"
     "\n"
     "help('modules') lists the modules; help(obj) shows an object's members.\n";

@@ -23,10 +23,14 @@ Regenerate them after changing any of these:
 
 It needs make, gcc and Python 3: Linux, WSL, or Git Bash on Windows with
 MinGW-w64 (keep the checkout on a short path there, the generator's command
-lines get long):
+lines get long). The checkout needs its `lib/micropython-lib` submodule
+(the frozen `ssl`, `umqtt`, `requests` and `aiohttp`), and the generator
+needs mbedTLS's headers for `ssl`: ESP-IDF's, found through `IDF_PATH`, or
+`MBEDTLS_INC=/path/to/mbedtls/include`:
 
 ```bash
 git clone --depth 1 --branch v1.29.0 https://github.com/micropython/micropython.git ../mp
+git -C ../mp submodule update --init lib/micropython-lib
 tools/micropython/gen.sh ../mp                      # python/gen
 tools/micropython/gen.sh ../mp INTERPRETER=1        # and third_party/micropython
 ```

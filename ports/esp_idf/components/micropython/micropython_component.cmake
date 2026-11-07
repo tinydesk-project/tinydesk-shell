@@ -9,7 +9,8 @@
 #
 #   include(${TDSH_SDK_ROOT}/ports/esp_idf/components/micropython/micropython_component.cmake)
 #   tdsh_micropython_component(GEN_DIR dir EXTRA_SRCS files... EXTRA_INCLUDES dirs...
-#                              EXTRA_REQUIRES components... [HELP_EXTERNAL])
+#                              EXTRA_REQUIRES components... [BOARD_NAME name]
+#                              [HELP_EXTERNAL])
 #
 # HELP_EXTERNAL: the application defines td_py_help_text (see td_py.h).
 
@@ -19,7 +20,7 @@ get_filename_component(TDSH_PY_SDK_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../.." 
 # A macro, not a function: ESP-IDF's first pass over the components reads
 # what idf_component_register sets in the component's own scope.
 macro(tdsh_micropython_component)
-    cmake_parse_arguments(P "HELP_EXTERNAL" "GEN_DIR" "EXTRA_SRCS;EXTRA_INCLUDES;EXTRA_REQUIRES" ${ARGN})
+    cmake_parse_arguments(P "HELP_EXTERNAL" "GEN_DIR;BOARD_NAME" "EXTRA_SRCS;EXTRA_INCLUDES;EXTRA_REQUIRES" ${ARGN})
     set(TDSH_MICROPYTHON_DIR "${TDSH_PY_SDK_ROOT}/third_party/micropython")
     set(py_dir "${TDSH_PY_SDK_ROOT}/python")
     if(NOT P_GEN_DIR)
@@ -30,6 +31,8 @@ macro(tdsh_micropython_component)
         "${py_dir}/td_py.c"
         "${py_dir}/td_py_machine.c"
         "${py_dir}/td_py_vfs.c"
+        "${py_dir}/td_py_socket.c"
+        "${py_dir}/td_py_tls_ca.c"
         "${py_dir}/hw/td_py_hw_esp.c"   # machine: the chip's drivers
         "${py_dir}/hw/td_py_hw_pins.c"
         ${P_EXTRA_SRCS}
@@ -41,12 +44,15 @@ macro(tdsh_micropython_component)
         INCLUDE_DIRS "${P_GEN_DIR}" "${TDSH_MICROPYTHON_DIR}" "${py_dir}" ${P_EXTRA_INCLUDES}
         PRIV_INCLUDE_DIRS "${TDSH_PY_COMPONENT_DIR}/include"   # poll.h for extmod/vfs_posix_file.c
         # mbedtls: hashlib; the drivers and esp_adc: machine
-        REQUIRES tdsh esp_timer vfs mbedtls esp_driver_gpio esp_driver_ledc esp_driver_i2c
+        REQUIRES tdsh esp_timer vfs mbedtls lwip esp_netif esp_driver_gpio esp_driver_ledc esp_driver_i2c
                  esp_driver_spi esp_driver_uart esp_driver_rmt esp_adc ${P_EXTRA_REQUIRES}
     )
     # Configure again when this file changes (CMake only tracks CMakeLists.txt).
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${TDSH_PY_COMPONENT_DIR}/micropython_component.cmake")
     target_compile_definitions(${COMPONENT_LIB} PUBLIC TD_WITH_PYTHON)
+    if(P_BOARD_NAME)
+        target_compile_definitions(${COMPONENT_LIB} PRIVATE "TD_PY_BOARD_NAME=\"${P_BOARD_NAME}\"")
+    endif()
     if(P_HELP_EXTERNAL)
         target_compile_definitions(${COMPONENT_LIB} PRIVATE TD_PY_APP_HELP)   # the application's td_py_help_text
     endif()

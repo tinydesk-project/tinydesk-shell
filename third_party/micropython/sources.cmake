@@ -23,6 +23,7 @@ set(TDSH_MICROPYTHON_SRCS
     ${TDSH_MICROPYTHON_DIR}/extmod/modre.c
     ${TDSH_MICROPYTHON_DIR}/extmod/modselect.c
     ${TDSH_MICROPYTHON_DIR}/extmod/modtime.c
+    ${TDSH_MICROPYTHON_DIR}/extmod/modtls_mbedtls.c
     ${TDSH_MICROPYTHON_DIR}/extmod/vfs.c
     ${TDSH_MICROPYTHON_DIR}/extmod/vfs_posix_file.c
     ${TDSH_MICROPYTHON_DIR}/extmod/vfs_reader.c

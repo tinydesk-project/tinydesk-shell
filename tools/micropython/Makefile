@@ -48,6 +48,13 @@ QSTR_DEFS += $(PORT_DIR)/qstrdefsport.h $(EXT_QSTR_DEFS)
 # #ifdef ESP_PLATFORM / _WIN32 must not introduce qstrs. TD_PY_GENHDR turns
 # on both native-code emitters (Xtensa for the ESP32, x64 for Linux), so
 # the tables have the names of each.
+# ssl (extmod/modtls_mbedtls.c) needs mbedTLS's headers: ESP-IDF's copy
+# by default (IDF_PATH), or MBEDTLS_INC=/path/to/mbedtls/include.
+MBEDTLS_INC ?= $(IDF_PATH)/components/mbedtls/mbedtls/include
+ifeq ($(wildcard $(MBEDTLS_INC)/mbedtls/ssl.h),)
+$(error set IDF_PATH (ESP-IDF 5.3.1) or MBEDTLS_INC to mbedTLS's include directory, for ssl)
+endif
+CFLAGS += -I$(MBEDTLS_INC)
 CFLAGS += -DTD_PY_GENHDR -I$(PORT_DIR) -I$(TOP) -I$(BUILD) \
 	-I$(TDSH_ROOT)/include $(EXT_CFLAGS) -std=gnu11
 
@@ -63,6 +70,7 @@ EXTMOD_C := \
 	extmod/modre.c \
 	extmod/modselect.c \
 	extmod/modtime.c \
+	extmod/modtls_mbedtls.c \
 	extmod/vfs.c \
 	extmod/vfs_posix_file.c \
 	extmod/vfs_reader.c \
@@ -107,7 +115,7 @@ $(MPY_CROSS):
 
 $(FROZEN_C): $(MANIFEST) $(GENHDR_OUTPUT) $(MPY_CROSS)
 	$(ECHO) "GEN $@"
-	$(Q)MICROPY_MPYCROSS=$(MPY_CROSS) $(MAKE_MANIFEST) -o $@ -v "MPY_DIR=$(TOP)" -v "PORT_DIR=$(PORT_DIR)" \
+	$(Q)MICROPY_MPYCROSS=$(MPY_CROSS) $(MAKE_MANIFEST) -o $@ -v "MPY_DIR=$(TOP)" -v "MPY_LIB_DIR=$(TOP)/lib/micropython-lib" -v "PORT_DIR=$(PORT_DIR)" \
 		-v "TDSH_PY_DIR=$(PORT_DIR)" $(foreach v,$(MANIFEST_VARS),-v "$(v)") -b "$(BUILD)" --mpy-tool-flags="-mlongint-impl=mpz" $(MANIFEST)
 
 .PHONY: all generated interpreter

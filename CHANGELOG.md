@@ -15,6 +15,18 @@
   `HELP_EXTERNAL` let them release what a script left and describe their
   modules in `help()`. The generator also runs on Windows (Git Bash with
   MinGW-w64). See `python/README.md`.
+* **Network in `py`:** `socket` (`python/td_py_socket.c`: BSD sockets
+  over the shell's network, IPv4 first in `getaddrinfo`, Ctrl+C and
+  timeouts in blocking calls), `ssl`/`tls` (MicroPython's mbedTLS module,
+  TLS 1.2; certificates checked against ESP-IDF's CA bundle on the boards
+  and the system's root certificates on the PC, `python/td_py_tls_ca.c`),
+  a blocking `websocket` client, and from micropython-lib (MIT) `requests`,
+  `umqtt.simple`, `umqtt.robust` and `aiohttp`. The PC programs find
+  mbedTLS in ESP-IDF (`TDSH_MBEDTLS_DIR`); without it they have sockets but
+  no `ssl`. The generator needs MicroPython's `lib/micropython-lib`
+  submodule and mbedTLS's headers (`IDF_PATH` or `MBEDTLS_INC`).
+* **`py` banner:** "TinyDesk Shell" (`BOARD_NAME` in `tdsh_add_python()`
+  and `tdsh_micropython_component()`; an application names itself).
 * **`py` in the shell's own programs:** the firmware (ESP32-C6, ESP32,
   ESP32-S3) and the Linux and Windows programs register `py`
   (`TDSH_WITH_PYTHON`, on by default, for the PC builds). Ctrl+C stops a

@@ -9,14 +9,48 @@ the shell's paths and rights; Ctrl+C stops a script; `machine` and
 | --- | --- |
 | `python/td_py.c` | the `py` command: heap, stack, running a file, `-c` or the prompt, Ctrl+C, help |
 | `python/td_py_vfs.c` | files: `open()`, `os` through the shell's paths and rights |
+| `python/td_py_socket.c` | `socket`: BSD sockets over the network the shell set up (lwIP, or the PC's) |
+| `python/td_py_tls_ca.c` | the CAs `ssl`/`tls` trust by default (the firmware's bundle, the PC's roots) |
 | `python/td_py_machine.c`, `td_py_machine_*.h` | `machine`: Pin, ADC, PWM, I2C, SPI, UART, bitstream |
 | `python/hw/` | the chip side of `machine` (`td_py_hw_esp.c`; `td_py_hw_host.c` on a PC) |
 | `python/mpconfigport.h`, `qstrdefsport.h` | the interpreter's configuration |
-| `python/manifest.py`, `modules/` | frozen Python: `asyncio`, `neopixel` |
+| `python/manifest.py`, `modules/` | frozen Python: `asyncio`, `neopixel`, `websocket`; from micropython-lib `ssl`, `umqtt`, `requests`, `aiohttp` |
 | `python/gen/` | the generated tables and frozen modules (tools/micropython) |
 | `third_party/micropython/` | the interpreter (MicroPython's own sources) |
 | `python/tdsh_python.cmake` | PC builds: `tdsh_add_python()` |
 | `ports/esp_idf/components/micropython/` | the ESP-IDF component |
+
+## Network
+
+Scripts use the network the shell already set up (Wi-Fi or Ethernet on a
+board, the PC's on Linux and Windows): there is no `network` module.
+
+| Module | What |
+| --- | --- |
+| `socket` | `getaddrinfo`, `socket()` with `connect`, `bind`, `listen`, `accept`, `send(all)`, `recv`, `sendto`, `recvfrom`, `settimeout`, `setblocking`, `setsockopt`; a stream (`read`, `readline`, `write`) for `ssl`, `select` and `asyncio`. Addresses are `(host, port)`; `getaddrinfo` lists IPv4 first |
+| `ssl`, `tls` | TLS 1.2 (mbedTLS). `tls.SSLContext(tls.PROTOCOL_TLS_CLIENT)` checks the server's certificate against the trusted CAs; `ssl.wrap_socket()` does not unless `cert_reqs=ssl.CERT_REQUIRED` (MicroPython's default) |
+| `requests` | HTTP and HTTPS: `requests.get(url).json()`, `post`, ... (checks certificates) |
+| `umqtt.simple`, `umqtt.robust` | MQTT 3.1.1 client: `MQTTClient(id, host, ssl=...)`, `connect`, `publish`, `subscribe`, `check_msg` |
+| `websocket` | blocking WebSocket client: `create_connection("wss://...", timeout=10)`, `send`, `recv`, `close` (checks certificates; `verify=False` does not) |
+| `aiohttp` | asyncio HTTP client and `ws_connect` WebSockets |
+
+```python
+import requests, websocket
+from umqtt.simple import MQTTClient
+
+print(requests.get("https://example.com/").status_code)
+ws = websocket.create_connection("wss://echo.websocket.org/"); ws.send("hi"); print(ws.recv())
+c = MQTTClient("tdsh", "broker.hivemq.com"); c.connect(); c.publish(b"demo/topic", b"hello")
+```
+
+A blocking call (`connect`, `recv`, `accept`) waits in 10 ms slices, so
+Ctrl+C stops it; a timeout raises `OSError(ETIMEDOUT)`. Sockets a script
+leaves open are closed when it ends. DNS lookups wait for the resolver.
+The PC programs have `ssl` when built with mbedTLS (found in ESP-IDF, or
+`-DTDSH_MBEDTLS_DIR=...`); without it, sockets work and `ssl` raises
+ImportError.
+
+## Registering the command
 
 An application registers the command once, before sessions start:
 
@@ -47,6 +81,10 @@ third_party/tdsh/tools/micropython/gen.sh /path/to/micropython \
     EXT_QSTR_DEFS=my/qstrdefs.h MANIFEST=my/manifest.py \
     MANIFEST_VARS="MY_DIR=$PWD/my" OUT=my/gen
 ```
+
+An application's product name for the banner and
+`sys.implementation._machine` is `BOARD_NAME` in both build functions
+(default "TinyDesk Shell"; TinyDesk passes "TinyDesk").
 
 Its `manifest.py` starts with `include("$(TDSH_PY_DIR)/manifest.py")` to
 keep the shell's frozen modules. Then:
