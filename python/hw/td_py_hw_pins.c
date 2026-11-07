@@ -38,7 +38,24 @@ const char *td_hw_pin_owner(int pin, td_hw_chip_t chip)
         if (pin_key(key) && end && end != value && !*end && v == pin)
             return key;
     }
-    if (chip == TD_HW_CHIP_ESP32 || chip == TD_HW_CHIP_ESP32S3)
+    if (chip == TD_HW_CHIP_ESP32C6)
+    {
+        if (pin == 12 || pin == 13)
+            return "USB, the desktop's link";
+    }
+#ifdef TD_LINK_USJ
+    /* A board that serves the desktop on the chip's USB Serial/JTAG
+     * peripheral instead of UART0 (the Arduino Nano ESP32): the link is D-/D+
+     * on GPIO19/20, and the UART0 pins are free for a script to use. The chip
+     * still reports itself as an ESP32-S3, so this cannot be inferred from
+     * `chip`. (From PR #15, by aquasock.) */
+    else if (chip == TD_HW_CHIP_ESP32S3)
+    {
+        if (pin == 19 || pin == 20)
+            return "USB, the desktop's link";
+    }
+#endif
+    else if (chip == TD_HW_CHIP_ESP32 || chip == TD_HW_CHIP_ESP32S3)
     {   /* the desktop's UART0 on its default pins */
         int tx = chip == TD_HW_CHIP_ESP32 ? 1 : 43, rx = chip == TD_HW_CHIP_ESP32 ? 3 : 44;
         if (tdsh_board_int("console.uart", 0) >= 0 &&
@@ -46,11 +63,6 @@ const char *td_hw_pin_owner(int pin, td_hw_chip_t chip)
             return "the desktop's serial link";
         if (chip == TD_HW_CHIP_ESP32S3 && (pin == 19 || pin == 20) && tdsh_board_int("usb.host", 0) == 1)
             return "usb.host";
-    }
-    else if (chip == TD_HW_CHIP_ESP32C6)
-    {
-        if (pin == 12 || pin == 13)
-            return "USB, the desktop's link";
     }
     return NULL;
 }
@@ -72,6 +84,11 @@ bool td_hw_uart_kept(int id, td_hw_chip_t chip)
     for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++)
         if (tdsh_board_get(keys[i]) && tdsh_board_int(keys[i], -1) == id)
             return true;
-    return (chip == TD_HW_CHIP_ESP32 || chip == TD_HW_CHIP_ESP32S3) && id == 0 &&
-           !tdsh_board_get("console.uart");   /* the console */
+#ifdef TD_LINK_USJ
+    /* The desktop's link is USB, so UART0 is nobody's console here. */
+    const bool uart0_console = chip == TD_HW_CHIP_ESP32;
+#else
+    const bool uart0_console = chip == TD_HW_CHIP_ESP32 || chip == TD_HW_CHIP_ESP32S3;
+#endif
+    return uart0_console && id == 0 && !tdsh_board_get("console.uart");   /* the console */
 }
