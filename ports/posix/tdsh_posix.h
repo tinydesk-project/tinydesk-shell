@@ -33,6 +33,14 @@ typedef struct
 int tdsh_posix_init(const tdsh_posix_config_t *config);
 int tdsh_posix_run_interactive(void);
 int tdsh_posix_register_commands(void);
+
+/* For a command that handles Ctrl+C itself (py) on the program's terminal:
+ * raw mode on or off (keys, Ctrl+C among them, arrive as bytes); true once
+ * Ctrl+C was typed (the keys before it are dropped, the others stay for
+ * tdsh_getchar); the next key (blocking, EOF at the end of input). */
+void tdsh_console_raw_mode(bool on);
+bool tdsh_break_requested(void);
+int tdsh_getchar(void);
 const char *tdsh_posix_real_fs_root(void);
 const tdsh_platform_api_t *tdsh_posix_platform(void);
 

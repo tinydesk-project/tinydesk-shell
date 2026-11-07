@@ -60,6 +60,10 @@ Ctrl+A/E/U/K/L/C, and lines that wrap at the console's width. The console is swi
 read and restored before a command runs. Input from a pipe or a file works
 too (Windows line ends are accepted). Colour is on unless `NO_COLOR` is set.
 
+`py` (MicroPython, built in unless `-DTDSH_WITH_PYTHON=OFF`) switches the
+console to VT input while it runs, so its prompt edits its own line and
+Ctrl+C stops a running script instead of closing `tdsh.exe`.
+
 `ifconfig` lists the adapters that are up (name, MAC, IPv4 and IPv6
 addresses) and `ping [-c N] host` sends IPv4 echo requests through the IP
 Helper API. There is no `nano` on Windows.

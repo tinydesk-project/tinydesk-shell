@@ -11,6 +11,9 @@
 #include <string.h>
 
 #include "tdsh_platform_win.h"
+#ifdef TD_WITH_PYTHON
+#include "td_py.h"
+#endif
 
 /* A shell user or host name: lower case, letters, digits, '.', '_', '-'. */
 static void clean_name(const char *in, char *out, size_t cap, const char *fallback)
@@ -56,6 +59,12 @@ int main(void)
         fprintf(stderr, "tdsh: cannot set up %s (error %d)\n", root, rc);
         return 1;
     }
+#ifdef TD_WITH_PYTHON
+    /* py: the console goes raw while it runs, so Ctrl+C stops a script. */
+    td_py_register_shell_command();
+    td_py_set_break_check(tdsh_break_requested);
+    td_py_set_console(tdsh_getchar, tdsh_console_raw_mode);
+#endif
     tdsh_session_t session;
     rc = tdsh_session_init(&session, user, true);
     if (rc != 0)

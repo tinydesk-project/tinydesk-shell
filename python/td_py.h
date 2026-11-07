@@ -21,6 +21,13 @@ int td_py_register_shell_command(void);
  * one, a running script cannot be stopped from the keyboard. */
 void td_py_set_break_check(bool (*fn)(void));
 
+/* Optional, for consoles that need them: where the prompt and input() read
+ * a key (blocking; EOF at the end of input; default getchar()), and a
+ * function called with true before a script or the prompt runs and false
+ * after (a PC terminal goes into raw mode, so the prompt edits its own
+ * line and Ctrl+C arrives as a key). */
+void td_py_set_console(int (*read_key)(void), void (*raw_mode)(bool on));
+
 /* For td_py_vfs.c and application modules: the session running the script. */
 tdsh_session_t *td_py_session(void);
 

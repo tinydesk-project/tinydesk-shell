@@ -4,6 +4,7 @@ project(tdsh C)
 option(TDSH_BUILD_POSIX "Build the POSIX host port" ON)
 option(TDSH_BUILD_TESTS "Build portable regression tests" ON)
 set(TDSH_TEST_MBEDTLS_DIR "" CACHE PATH "Optional mbedTLS 3.x source for production account-store tests")
+option(TDSH_WITH_PYTHON "Build the py command (MicroPython) into the host program" ON)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -68,6 +69,13 @@ if(WIN32)
     add_executable(tdsh_host examples/windows/main.c)
     target_compile_options(tdsh_host PRIVATE ${TDSH_WIN_COMPAT})
     target_link_libraries(tdsh_host PRIVATE tdsh_win)
+    if(TDSH_WITH_PYTHON)
+        include(${CMAKE_CURRENT_SOURCE_DIR}/python/tdsh_python.cmake)
+        tdsh_add_python(NAME tdsh_python LINK tdsh_core COMPAT_FLAG ${TDSH_WIN_COMPAT})
+        target_link_libraries(tdsh_host PRIVATE tdsh_python)
+        set(TDSH_SMOKE_PY "py -c \"print('py', 6 * 7)\"\n")
+        set(TDSH_SMOKE_PY_EXPECT ".*py 42")
+    endif()
 
     if(TDSH_BUILD_TESTS)
         enable_testing()
@@ -101,7 +109,7 @@ echo sum=$((6 * 7))
 mkdir -p ~/t
 echo hi > ~/t/a.txt
 cat ~/t/a.txt
-exit
+${TDSH_SMOKE_PY}exit
 ")
         add_test(NAME tdsh_windows_smoke
                  COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:tdsh_host>
@@ -109,7 +117,7 @@ exit
                          -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_with_input.cmake)
         set_tests_properties(tdsh_windows_smoke PROPERTIES
             ENVIRONMENT "LOCALAPPDATA=${CMAKE_CURRENT_BINARY_DIR}/appdata"
-            PASS_REGULAR_EXPRESSION "TinyDesk Shell [0-9.]+ [(]windows[)].*sum=42.*hi")
+            PASS_REGULAR_EXPRESSION "TinyDesk Shell [0-9.]+ [(]windows[)].*sum=42.*hi${TDSH_SMOKE_PY_EXPECT}")
     endif()
     return()
 endif()
@@ -126,6 +134,11 @@ if(TDSH_BUILD_POSIX)
 
     add_executable(tdsh_host examples/posix/main.c)
     target_link_libraries(tdsh_host PRIVATE tdsh_posix)
+    if(TDSH_WITH_PYTHON)
+        include(${CMAKE_CURRENT_SOURCE_DIR}/python/tdsh_python.cmake)
+        tdsh_add_python(NAME tdsh_python LINK tdsh_core)
+        target_link_libraries(tdsh_host PRIVATE tdsh_python)
+    endif()
 endif()
 
 if(TDSH_BUILD_TESTS)

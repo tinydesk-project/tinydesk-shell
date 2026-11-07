@@ -8,7 +8,9 @@
  * Input: while a line is edited, the console is in raw VT input mode: no
  * line buffering or echo, every key (arrows, Home, Delete, Ctrl+C) arrives
  * as VT bytes. While a command runs, the original mode is back, so Ctrl+C
- * ends a runaway command as it does on Linux.
+ * ends a runaway command as it does on Linux; a command that handles Ctrl+C
+ * itself (py) switches to raw input with tdsh_console_raw_mode() and checks
+ * with tdsh_break_requested().
  *
  * Built with tdsh_win_compat.h force-included like the rest of the port.
  */
@@ -72,6 +74,36 @@ static void queue_char(WCHAR wc)
     }
 }
 
+/* Move console key presses into the queue: with wait, one batch (waiting
+ * for it); without, every one already waiting. False on a console error. */
+static bool take_waiting_keys(bool wait)
+{
+    for (;;)
+    {
+        DWORD waiting = 0;
+        if (!wait && (!GetNumberOfConsoleInputEvents(s_in, &waiting) || waiting == 0))
+            return true;
+        if (wait && WaitForSingleObject(s_in, INFINITE) != WAIT_OBJECT_0)
+            return false;
+        INPUT_RECORD rec[16];
+        DWORD got = 0;
+        if (!ReadConsoleInputW(s_in, rec, 16, &got))
+            return false;
+        for (DWORD i = 0; i < got; i++)
+        {
+            if (rec[i].EventType != KEY_EVENT)
+                continue;
+            const KEY_EVENT_RECORD *k = &rec[i].Event.KeyEvent;
+            if (!k->bKeyDown || k->uChar.UnicodeChar == 0)
+                continue;
+            for (WORD r = 0; r < (k->wRepeatCount ? k->wRepeatCount : 1); r++)
+                queue_char(k->uChar.UnicodeChar);
+        }
+        if (wait)
+            return true;
+    }
+}
+
 static int console_read_byte(void *context, uint8_t *byte_out)
 {
     (void)context;
@@ -93,24 +125,8 @@ static int console_read_byte(void *context, uint8_t *byte_out)
         }
     }
     while (s_q_count == 0)
-    {
-        INPUT_RECORD rec[16];
-        DWORD got = 0;
-        if (WaitForSingleObject(s_in, INFINITE) != WAIT_OBJECT_0)
+        if (!take_waiting_keys(true))
             return -EIO;
-        if (!ReadConsoleInputW(s_in, rec, 16, &got))
-            return -EIO;
-        for (DWORD i = 0; i < got; i++)
-        {
-            if (rec[i].EventType != KEY_EVENT)
-                continue;
-            const KEY_EVENT_RECORD *k = &rec[i].Event.KeyEvent;
-            if (!k->bKeyDown || k->uChar.UnicodeChar == 0)
-                continue;
-            for (WORD r = 0; r < (k->wRepeatCount ? k->wRepeatCount : 1); r++)
-                queue_char(k->uChar.UnicodeChar);
-        }
-    }
     *byte_out = s_queue[s_q_head];
     s_q_head = (s_q_head + 1) % (int)sizeof(s_queue);
     s_q_count--;
@@ -143,6 +159,33 @@ static void raw_input(bool on)
     SetConsoleMode(s_in, on ? (ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_EXTENDED_FLAGS) : s_in_mode);
     if (on)
         FlushConsoleInputBuffer(s_in);
+}
+
+void tdsh_console_raw_mode(bool on)
+{
+    raw_input(on);
+}
+
+bool tdsh_break_requested(void)
+{
+    if (!s_in_console)
+        return false;
+    take_waiting_keys(false);
+    for (int i = s_q_count - 1; i >= 0; i--)
+        if (s_queue[(s_q_head + i) % (int)sizeof(s_queue)] == 0x03)
+        {
+            /* Drop the keys up to and including it, like a terminal. */
+            s_q_head = (s_q_head + i + 1) % (int)sizeof(s_queue);
+            s_q_count -= i + 1;
+            return true;
+        }
+    return false;
+}
+
+int tdsh_getchar(void)
+{
+    uint8_t b;
+    return console_read_byte(NULL, &b) == 0 ? b : EOF;
 }
 
 static void restore_console(void)

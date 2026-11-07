@@ -375,11 +375,22 @@ static void build_prompt(const tdsh_session_t *s, char *out, size_t cap)
         snprintf(out, cap, "%s@%s:%s%c ", s->username, s->hostname, display, marker);
 }
 
+/* Keys read while checking for Ctrl+C (tdsh_break_requested); they come
+ * first in posix_terminal_read_byte. */
+static uint8_t s_ahead[64];
+static size_t s_ahead_len;
+
 static int posix_terminal_read_byte(void *context, uint8_t *byte_out)
 {
     (void)context;
     if (!byte_out)
         return -EINVAL;
+    if (s_ahead_len)
+    {
+        *byte_out = s_ahead[0];
+        memmove(s_ahead, s_ahead + 1, --s_ahead_len);
+        return 0;
+    }
     for (;;)
     {
         ssize_t n = read(STDIN_FILENO, byte_out, 1U);
@@ -405,6 +416,8 @@ static int posix_terminal_columns(void *context)
 static int posix_terminal_read_byte_timeout(void *context, uint8_t *byte_out, unsigned timeout_ms)
 {
     struct pollfd p = {.fd = STDIN_FILENO, .events = POLLIN};
+    if (s_ahead_len)
+        return posix_terminal_read_byte(context, byte_out);
     for (;;)
     {
         int n = poll(&p, 1, (int)timeout_ms);
@@ -432,6 +445,53 @@ static int posix_terminal_write_bytes(void *context, const void *data, size_t le
         done += (size_t)n;
     }
     return 0;
+}
+
+static struct termios s_raw_saved;
+static bool s_raw_on;
+
+void tdsh_console_raw_mode(bool on)
+{
+    if (on && !s_raw_on && isatty(STDIN_FILENO) && tcgetattr(STDIN_FILENO, &s_raw_saved) == 0)
+    {
+        struct termios raw = s_raw_saved;
+        cfmakeraw(&raw);
+        raw.c_oflag |= OPOST;   /* output: a newline still starts a new line */
+        raw.c_cc[VMIN] = 1;
+        raw.c_cc[VTIME] = 0;
+        s_raw_on = tcsetattr(STDIN_FILENO, TCSANOW, &raw) == 0;
+    }
+    else if (!on && s_raw_on)
+    {
+        (void)tcsetattr(STDIN_FILENO, TCSANOW, &s_raw_saved);
+        s_raw_on = false;
+    }
+}
+
+bool tdsh_break_requested(void)
+{
+    struct pollfd p = {.fd = STDIN_FILENO, .events = POLLIN};
+    bool brk = false;
+    uint8_t b;
+    while (poll(&p, 1, 0) > 0 && (p.revents & POLLIN) && read(STDIN_FILENO, &b, 1) == 1)
+    {
+        if (b == 0x03)
+        {
+            brk = true;
+            s_ahead_len = 0;   /* like a terminal: drop the keys typed before it */
+        }
+        else if (s_ahead_len < sizeof(s_ahead))
+        {
+            s_ahead[s_ahead_len++] = b;
+        }
+    }
+    return brk;
+}
+
+int tdsh_getchar(void)
+{
+    uint8_t b;
+    return posix_terminal_read_byte(NULL, &b) == 0 ? b : EOF;
 }
 
 static int posix_readline(tdsh_session_t *session,

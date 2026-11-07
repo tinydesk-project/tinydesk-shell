@@ -246,8 +246,30 @@ int tdsh_cmd_hwtest(tdsh_session_t *session, int argc, char **argv);
 bool tdsh_ssh_is_running(uint16_t *port, int *clients);
 int tdsh_ssh_set_running(bool on);
 int tdsh_ssh_terminal_columns(void);
+bool tdsh_ssh_break_requested(void);
+bool tdsh_break_requested(void);
+int tdsh_getchar(void);
 bool tdsh_ftp_is_running(uint16_t *port);
 int tdsh_ftp_set_running(bool on);
+```
+
+## ports/posix/tdsh_posix.h, ports/windows/tdsh_platform_win.h (PC programs)
+
+```c
+void tdsh_console_raw_mode(bool on);
+bool tdsh_break_requested(void);
+int tdsh_getchar(void);
+```
+
+## python/td_py.h
+
+```c
+int td_py_register_shell_command(void);
+void td_py_set_break_check(bool (*fn)(void));
+void td_py_set_console(int (*read_key)(void), void (*raw_mode)(bool on));
+tdsh_session_t *td_py_session(void);
+int td_py_add_cleanup(void (*fn)(void));
+extern const char td_py_help_text[];
 ```
 
 ## Registered commands

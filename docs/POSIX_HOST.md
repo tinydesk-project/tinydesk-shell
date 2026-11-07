@@ -71,6 +71,10 @@ and restores the previous terminal settings before executing the command. This
 allows normal commands and the full-screen `nano` command to manage their own
 terminal behavior safely.
 
+`py` (MicroPython, built in unless `-DTDSH_WITH_PYTHON=OFF`) puts the
+terminal in raw mode while it runs, so its prompt edits its own line and
+Ctrl+C stops a running script instead of ending the program.
+
 Color is enabled only when stdout is an ANSI-capable TTY. Set `NO_COLOR=1` to
 disable it.
 

@@ -27,6 +27,12 @@ td_py_register_shell_command();       /* py */
 td_py_set_break_check(break_pressed);  /* Ctrl+C stops a script */
 ```
 
+The shell's own programs do this in `main/main.c` (firmware: the serial/USB
+console and SSH, with `tdsh_break_requested` and `tdsh_getchar`) and
+`examples/posix`, `examples/windows` (which also pass
+`tdsh_console_raw_mode` to `td_py_set_console`, so the terminal is raw while
+`py` runs). The PC builds include it unless `-DTDSH_WITH_PYTHON=OFF`.
+
 ## Modules of your own
 
 An application built on the shell (TinyDesk's desktop is one) can add

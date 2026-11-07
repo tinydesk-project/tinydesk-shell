@@ -456,6 +456,37 @@ static int ssh_user_auth_types(WOLFSSH *ssh, void *ctx)
 /* SSH-backed stdio                                                           */
 /* -------------------------------------------------------------------------- */
 
+/* The SSH shell session's connection and task, for tdsh_ssh_break_requested
+ * (one SSH client at a time). */
+static WOLFSSH *volatile s_shell_ssh;
+static TaskHandle_t volatile s_shell_task;
+
+bool tdsh_ssh_break_requested(void)
+{
+    WOLFSSH *ssh = s_shell_ssh;
+    if (!ssh || xTaskGetCurrentTaskHandle() != s_shell_task)
+        return false;
+    /* Take in what the client sent (one packet per check, without waiting),
+     * then look at the session's input without consuming it. */
+    int fd = (int)wolfSSH_get_fd(ssh);
+    fd_set readable;
+    FD_ZERO(&readable);
+    FD_SET(fd, &readable);
+    struct timeval tv = {0};
+    if (select(fd + 1, &readable, NULL, NULL, &tv) > 0)
+        (void)wolfSSH_worker(ssh, NULL);
+    byte buf[64];
+    int n = wolfSSH_stream_peek(ssh, buf, sizeof(buf));
+    for (int i = n - 1; i >= 0; i--)
+        if (buf[i] == 0x03)
+        {
+            /* Drop the input up to and including it, like a terminal. */
+            (void)wolfSSH_stream_read(ssh, buf, (word32)i + 1U);
+            return true;
+        }
+    return false;
+}
+
 static int ssh_stdio_read(void *cookie, char *buf, int len)
 {
     WOLFSSH *ssh = (WOLFSSH *)cookie;
@@ -610,6 +641,8 @@ static int run_ssh_shell(WOLFSSH *ssh)
     stdin = io;
     stdout = io;
     stderr = io;
+    s_shell_task = xTaskGetCurrentTaskHandle();
+    s_shell_ssh = ssh;
 
     printf("\r\n==========================================\r\n");
     printf("          WELCOME TO TINYDESK SHELL\r\n");
@@ -648,6 +681,8 @@ static int run_ssh_shell(WOLFSSH *ssh)
             }
     }
 
+    s_shell_ssh = NULL;
+    s_shell_task = NULL;
     fflush(io);
     stdin = old_in;
     stdout = old_out;

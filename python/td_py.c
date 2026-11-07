@@ -66,6 +66,8 @@
 #define STACK_MARGIN 6144
 
 static bool (*s_break_check)(void);
+static int (*s_read_key)(void);
+static void (*s_raw_mode)(bool on);
 static atomic_flag s_busy = ATOMIC_FLAG_INIT;
 static tdsh_session_t *s_session;
 
@@ -108,6 +110,12 @@ void td_py_set_break_check(bool (*fn)(void))
     s_break_check = fn;
 }
 
+void td_py_set_console(int (*read_key)(void), void (*raw_mode)(bool on))
+{
+    s_read_key = read_key;
+    s_raw_mode = raw_mode;
+}
+
 tdsh_session_t *td_py_session(void)
 {
     return s_session;
@@ -133,7 +141,7 @@ void td_py_poll(void)
 
 int mp_hal_stdin_rx_chr(void)
 {
-    int c = getchar();
+    int c = s_read_key ? s_read_key() : getchar();
     return c == EOF ? CHAR_CTRL_D : c;   /* end of input leaves the prompt */
 }
 
@@ -627,6 +635,8 @@ static int cmd_py(tdsh_session_t *session, int argc, char **argv)
     gc_init(heap, (uint8_t *)heap + heap_size);
     mp_init();
 
+    if (s_raw_mode)
+        s_raw_mode(true);
     int status;
     if (code)
         status = run_protected(session->cwd, code, NULL, argc - i, argv + i);
@@ -634,6 +644,8 @@ static int cmd_py(tdsh_session_t *session, int argc, char **argv)
         status = run_protected(session->cwd, NULL, file, argc - i - 1, argv + i + 1);
     else
         status = run_protected(session->cwd, NULL, NULL, 0, NULL);
+    if (s_raw_mode)
+        s_raw_mode(false);
 
     td_machine_release();   /* pins, buses and interrupts the script opened */
     for (int k = 0; k < CLEANUP_MAX && s_cleanup[k]; k++)

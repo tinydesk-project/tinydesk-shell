@@ -68,6 +68,10 @@ static tdsh_console_access_t s_console_access = TDSH_ACCESS_LOCAL;
 static bool s_local_swallow_lf_after_cr = false;
 static bool s_remote_swallow_lf_after_cr = false;
 static int tdsh_task_read_char(unsigned char *out);
+/* Keys the local console read while checking for Ctrl+C during a command
+ * (tdsh_break_requested); they come first in tdsh_task_read_char. */
+static uint8_t s_ahead[64];
+static size_t s_ahead_len;
 
 static esp_err_t tdsh_console_transport_init(void)
 {
@@ -213,6 +217,13 @@ static int terminal_read_byte_timeout(void *context, uint8_t *out, unsigned time
         return -ENOTSUP;
     for (;;)
     {
+        if (s_ahead_len)
+        {
+            (void)tdsh_task_read_char(out);
+            if (!swallow_lf(*out))
+                return 0;
+            continue;
+        }
 #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
         /* The USB Serial/JTAG VFS has no select(); stdin is unbuffered and
          * reads from the same driver, so read the driver with a timeout. */
@@ -286,10 +297,70 @@ bool tdsh_console_mark_remote(void)
     return tdsh_access_mark_remote(&s_console_access);
 }
 
+/* One key waiting on the local serial console, without blocking: 1 read, 0
+ * none. Only for the console's own driver (not a front end's stream). */
+static int local_poll_byte(uint8_t *out)
+{
+#if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
+    return usb_serial_jtag_read_bytes(out, 1, 0) > 0 ? 1 : 0;
+#else
+    int fd = fileno(stdin);
+    fd_set readable;
+    FD_ZERO(&readable);
+    FD_SET(fd, &readable);
+    struct timeval tv = {0};
+    if (select(fd + 1, &readable, NULL, NULL, &tv) <= 0)
+        return 0;
+    int c = fgetc(stdin);
+    if (c == EOF)
+    {
+        clearerr(stdin);
+        return 0;
+    }
+    *out = (uint8_t)c;
+    return 1;
+#endif
+}
+
+bool tdsh_break_requested(void)
+{
+    if (!tdsh_is_local_console_task())
+        return tdsh_ssh_break_requested();
+    if (fileno(stdin) < 0)
+        return false;   /* a front end's stream: it checks for itself */
+    bool brk = false;
+    uint8_t b;
+    while (local_poll_byte(&b))
+    {
+        if (b == 0x03)
+        {
+            brk = true;
+            s_ahead_len = 0;   /* like a terminal: drop the keys typed before it */
+        }
+        else if (s_ahead_len < sizeof(s_ahead))
+        {
+            s_ahead[s_ahead_len++] = b;
+        }
+    }
+    return brk;
+}
+
+int tdsh_getchar(void)
+{
+    unsigned char c;
+    return tdsh_task_read_char(&c) == 0 ? c : EOF;
+}
+
 static int tdsh_task_read_char(unsigned char *out)
 {
     if (!out)
         return -1;
+    if (s_ahead_len && tdsh_is_local_console_task())
+    {
+        *out = s_ahead[0];
+        memmove(s_ahead, s_ahead + 1, --s_ahead_len);
+        return 0;
+    }
 
     /* stdin is transport-local: USB Serial/JTAG for the local shell and the
      * encrypted stream for SSH sessions. The local USB VFS was switched to

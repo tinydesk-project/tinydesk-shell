@@ -2,7 +2,7 @@
  * main.c - the standalone TinyDesk Shell firmware: the shell on the chip's
  * console (USB Serial/JTAG on the ESP32-C6, UART0 on the classic ESP32 and
  * the ESP32-S3),
- * with one example application command.
+ * with MicroPython (py) and one example application command.
  */
 #include <stdio.h>
 
@@ -11,6 +11,7 @@
 #include "nvs_flash.h"
 #include "sdkconfig.h"
 #include "tdsh_espidf.h"
+#include "td_py.h"
 
 static const char *TAG = "tdsh-main";
 
@@ -60,5 +61,11 @@ void app_main(void)
         ESP_LOGE(TAG, "application command registration failed: %d", rc);
         return;
     }
+    /* py: MicroPython scripts and prompt; Ctrl+C on the serial/USB console
+     * or over SSH stops a script. */
+    if (td_py_register_shell_command() != 0)
+        ESP_LOGE(TAG, "py registration failed");
+    td_py_set_break_check(tdsh_break_requested);
+    td_py_set_console(tdsh_getchar, NULL);
     ESP_ERROR_CHECK(tdsh_espidf_start());
 }

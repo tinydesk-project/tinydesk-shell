@@ -14,8 +14,16 @@
   `tdsh_micropython_component()`; `td_py_add_cleanup()` and
   `HELP_EXTERNAL` let them release what a script left and describe their
   modules in `help()`. The generator also runs on Windows (Git Bash with
-  MinGW-w64). See `python/README.md`. The shell's own firmware does not
-  register `py` yet (it needs a Ctrl+C check for its consoles).
+  MinGW-w64). See `python/README.md`.
+* **`py` in the shell's own programs:** the firmware (ESP32-C6, ESP32,
+  ESP32-S3) and the Linux and Windows programs register `py`
+  (`TDSH_WITH_PYTHON`, on by default, for the PC builds). Ctrl+C stops a
+  script on the serial/USB console, over SSH and in the PC terminal:
+  `tdsh_break_requested()` and `tdsh_getchar()` (ESP-IDF, POSIX and
+  Windows ports; keys typed before Ctrl+C are dropped, others are kept),
+  `tdsh_ssh_break_requested()`, and on the PC `tdsh_console_raw_mode()`,
+  as `py` puts the terminal in raw mode while it runs.
+  `td_py_set_console()` gives `py` a console's key reader and raw mode.
 
 * **Password hints (ESP-IDF port):** `useradd` and `passwd` ask for an
   optional hint after the password; one that contains the password is

@@ -273,6 +273,19 @@ bool tdsh_ssh_is_running(uint16_t *port, int *clients);
 int tdsh_ssh_set_running(bool on);
 /* The SSH client's terminal width from its pty request, 0 if none. */
 int tdsh_ssh_terminal_columns(void);
+/* Ctrl+C typed in the SSH session of the calling task (false in any other
+ * task); input before it is dropped, input after it stays. */
+bool tdsh_ssh_break_requested(void);
+
+/* For a long-running command (a script, a monitor loop): true once Ctrl+C
+ * was typed on the session of the calling task, the serial/USB console or
+ * SSH. Keys typed before it are dropped, like a terminal does; others stay
+ * for tdsh_getchar(). A front end that runs the console on its own stream
+ * (tdsh_espidf_run_console) checks its stream itself: false there. */
+bool tdsh_break_requested(void);
+/* A key from the calling task's session (blocking; EOF at its end), after
+ * the keys tdsh_break_requested() kept. */
+int tdsh_getchar(void);
 bool tdsh_ftp_is_running(uint16_t *port);
 int tdsh_ftp_set_running(bool on);
 

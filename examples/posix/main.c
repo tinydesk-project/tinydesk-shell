@@ -2,6 +2,10 @@
 
 #include <stdio.h>
 
+#ifdef TD_WITH_PYTHON
+#include "td_py.h"
+#endif
+
 static int cmd_app(tdsh_session_t *session, int argc, char **argv)
 {
     (void)session;
@@ -32,5 +36,11 @@ int main(void)
         fprintf(stderr, "app command registration failed: %d\n", rc);
         return 1;
     }
+#ifdef TD_WITH_PYTHON
+    /* py: the terminal goes raw while it runs, so Ctrl+C stops a script. */
+    td_py_register_shell_command();
+    td_py_set_break_check(tdsh_break_requested);
+    td_py_set_console(tdsh_getchar, tdsh_console_raw_mode);
+#endif
     return tdsh_posix_run_interactive();
 }
