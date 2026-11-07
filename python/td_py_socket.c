@@ -753,3 +753,196 @@ const mp_obj_module_t mp_module_tls = {
     .globals = (mp_obj_dict_t *)&td_no_tls_globals,
 };
 #endif
+
+/* ------------------------------------------------------------ network */
+/*
+ * network: read-only status of the network the shell set up. Scripts do
+ * not connect, scan or change settings: the shell's commands (wifi,
+ * network, ifconfig) do, with their rights.
+ *
+ *   network.isconnected()        True when there is an IP connection
+ *   network.ifconfig()           (ip, netmask, gateway, dns) of the interface in use
+ *   network.status()             a dict: interface, connected, ip, netmask, gateway,
+ *                                dns, mac, and for Wi-Fi ssid, rssi, channel
+ *   network.wait(timeout=None)   wait for a connection (seconds); True once connected
+ */
+typedef struct
+{
+    const char *iface;   /* "wlan", "eth", "host" or NULL */
+    bool connected;
+    uint32_t ip, netmask, gateway, dns;   /* network byte order */
+    uint8_t mac[6];
+    bool have_mac;
+    char ssid[33];
+    int rssi;
+    int channel;
+} td_net_status_t;
+
+#if defined(ESP_PLATFORM)
+#include "tdsh_espidf.h"
+
+static void net_status(td_net_status_t *st)
+{
+    memset(st, 0, sizeof(*st));
+    tdsh_wifi_info_t w;
+    tdsh_eth_info_t e;
+    bool wifi = tdsh_wifi_get_info(&w) == 0 && w.connected;
+    bool eth = !wifi && tdsh_eth_get_info(&e) == 0 && e.connected;
+    if (wifi)
+    {
+        st->iface = "wlan";
+        st->connected = true;
+        st->ip = w.ip.addr;
+        st->netmask = w.netmask.addr;
+        st->gateway = w.gateway.addr;
+        st->dns = w.dns.addr;
+        memcpy(st->mac, w.mac, 6);
+        st->have_mac = true;
+        snprintf(st->ssid, sizeof(st->ssid), "%s", w.ssid);
+        st->rssi = w.rssi;
+        st->channel = (int)w.channel;
+    }
+    else if (eth)
+    {
+        st->iface = "eth";
+        st->connected = true;
+        st->ip = e.ip.addr;
+        st->netmask = e.netmask.addr;
+        st->gateway = e.gateway.addr;
+        st->dns = e.dns.addr;
+        memcpy(st->mac, e.mac, 6);
+        st->have_mac = true;
+    }
+    else if (tdsh_wifi_get_info(&w) == 0 && w.initialized)
+    {
+        st->iface = "wlan";   /* Wi-Fi on, not connected */
+        memcpy(st->mac, w.mac, 6);
+        st->have_mac = true;
+    }
+}
+#else
+/* The PC: the address the computer would use to reach the internet (a UDP
+ * "connect" sends nothing); no netmask, gateway or DNS. */
+static void net_status(td_net_status_t *st)
+{
+    memset(st, 0, sizeof(*st));
+    st->iface = "host";
+    ensure_started();
+    td_sock_t fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd == TD_BAD_SOCK)
+        return;
+    struct sockaddr_in to = {0};
+    to.sin_family = AF_INET;
+    to.sin_port = htons(53);
+    inet_pton(AF_INET, "192.0.2.1", &to.sin_addr);   /* TEST-NET-1: nothing is sent */
+    struct sockaddr_in me;
+    socklen_t len = sizeof(me);
+    if (connect(fd, (struct sockaddr *)&to, sizeof(to)) == 0 &&
+        getsockname(fd, (struct sockaddr *)&me, &len) == 0 && me.sin_addr.s_addr != 0)
+    {
+        st->connected = true;
+        st->ip = me.sin_addr.s_addr;
+    }
+    td_closesocket(fd);
+}
+#endif
+
+static mp_obj_t ip_str(uint32_t addr)
+{
+    char buf[16];
+    struct in_addr a;
+    a.s_addr = addr;
+    inet_ntop(AF_INET, &a, buf, sizeof(buf));
+    return mp_obj_new_str(buf, strlen(buf));
+}
+
+static mp_obj_t td_net_isconnected(void)
+{
+    td_net_status_t st;
+    net_status(&st);
+    return mp_obj_new_bool(st.connected);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(td_net_isconnected_obj, td_net_isconnected);
+
+static mp_obj_t td_net_ifconfig(void)
+{
+    td_net_status_t st;
+    net_status(&st);
+    mp_obj_t items[4] = {ip_str(st.ip), ip_str(st.netmask), ip_str(st.gateway), ip_str(st.dns)};
+    return mp_obj_new_tuple(4, items);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(td_net_ifconfig_obj, td_net_ifconfig);
+
+static void dict_str(mp_obj_t d, qstr key, mp_obj_t val)
+{
+    mp_obj_dict_store(d, MP_OBJ_NEW_QSTR(key), val);
+}
+
+static mp_obj_t td_net_status(void)
+{
+    td_net_status_t st;
+    net_status(&st);
+    mp_obj_t d = mp_obj_new_dict(0);
+    dict_str(d, MP_QSTR_interface, st.iface ? mp_obj_new_str(st.iface, strlen(st.iface)) : mp_const_none);
+    dict_str(d, MP_QSTR_connected, mp_obj_new_bool(st.connected));
+    dict_str(d, MP_QSTR_ip, ip_str(st.ip));
+    dict_str(d, MP_QSTR_netmask, ip_str(st.netmask));
+    dict_str(d, MP_QSTR_gateway, ip_str(st.gateway));
+    dict_str(d, MP_QSTR_dns, ip_str(st.dns));
+    if (st.have_mac)
+    {
+        char mac[18];
+        snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
+                 st.mac[0], st.mac[1], st.mac[2], st.mac[3], st.mac[4], st.mac[5]);
+        dict_str(d, MP_QSTR_mac, mp_obj_new_str(mac, strlen(mac)));
+    }
+    if (st.ssid[0])
+    {
+        dict_str(d, MP_QSTR_ssid, mp_obj_new_str(st.ssid, strlen(st.ssid)));
+        dict_str(d, MP_QSTR_rssi, MP_OBJ_NEW_SMALL_INT(st.rssi));
+        dict_str(d, MP_QSTR_channel, MP_OBJ_NEW_SMALL_INT(st.channel));
+    }
+    return d;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(td_net_status_obj, td_net_status);
+
+static mp_obj_t td_net_wait(size_t n_args, const mp_obj_t *args)
+{
+    int timeout_ms = -1;
+    if (n_args > 0 && args[0] != mp_const_none)
+    {
+#if MICROPY_PY_BUILTINS_FLOAT
+        timeout_ms = (int)(mp_obj_get_float(args[0]) * 1000);
+#else
+        timeout_ms = (int)mp_obj_get_int(args[0]) * 1000;
+#endif
+    }
+    mp_uint_t start = mp_hal_ticks_ms();
+    for (;;)
+    {
+        td_net_status_t st;
+        net_status(&st);
+        if (st.connected)
+            return mp_const_true;
+        if (timeout_ms >= 0 && (int)(mp_hal_ticks_ms() - start) >= timeout_ms)
+            return mp_const_false;
+        mp_hal_delay_ms(100);   /* Ctrl+C stops the wait */
+    }
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(td_net_wait_obj, 0, 1, td_net_wait);
+
+static const mp_rom_map_elem_t td_network_module_table[] = {
+    {MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_network)},
+    {MP_ROM_QSTR(MP_QSTR_isconnected), MP_ROM_PTR(&td_net_isconnected_obj)},
+    {MP_ROM_QSTR(MP_QSTR_ifconfig), MP_ROM_PTR(&td_net_ifconfig_obj)},
+    {MP_ROM_QSTR(MP_QSTR_status), MP_ROM_PTR(&td_net_status_obj)},
+    {MP_ROM_QSTR(MP_QSTR_wait), MP_ROM_PTR(&td_net_wait_obj)},
+};
+static MP_DEFINE_CONST_DICT(td_network_module_globals, td_network_module_table);
+
+const mp_obj_module_t td_network_module = {
+    .base = {&mp_type_module},
+    .globals = (mp_obj_dict_t *)&td_network_module_globals,
+};
+
+MP_REGISTER_MODULE(MP_QSTR_network, td_network_module);

@@ -9,7 +9,7 @@ the shell's paths and rights; Ctrl+C stops a script; `machine` and
 | --- | --- |
 | `python/td_py.c` | the `py` command: heap, stack, running a file, `-c` or the prompt, Ctrl+C, help |
 | `python/td_py_vfs.c` | files: `open()`, `os` through the shell's paths and rights |
-| `python/td_py_socket.c` | `socket`: BSD sockets over the network the shell set up (lwIP, or the PC's) |
+| `python/td_py_socket.c` | `network` (status) and `socket`: BSD sockets over the network the shell set up (lwIP, or the PC's) |
 | `python/td_py_tls_ca.c` | the CAs `ssl`/`tls` trust by default (the firmware's bundle, the PC's roots) |
 | `python/td_py_machine.c`, `td_py_machine_*.h` | `machine`: Pin, ADC, PWM, I2C, SPI, UART, bitstream |
 | `python/hw/` | the chip side of `machine` (`td_py_hw_esp.c`; `td_py_hw_host.c` on a PC) |
@@ -23,10 +23,12 @@ the shell's paths and rights; Ctrl+C stops a script; `machine` and
 ## Network
 
 Scripts use the network the shell already set up (Wi-Fi or Ethernet on a
-board, the PC's on Linux and Windows): there is no `network` module.
+board, the PC's on Linux and Windows). They can read its state, not change
+it.
 
 | Module | What |
 | --- | --- |
+| `network` | read-only status: `isconnected()`, `ifconfig()` (ip, netmask, gateway, dns), `status()` (a dict: interface, connected, ip, netmask, gateway, dns, mac, and for Wi-Fi ssid, rssi, channel), `wait(timeout=None)` (seconds; `True` once connected, Ctrl+C stops it). On a PC only the address is known. Connecting and settings stay with the shell's commands |
 | `socket` | `getaddrinfo`, `socket()` with `connect`, `bind`, `listen`, `accept`, `send(all)`, `recv`, `sendto`, `recvfrom`, `settimeout`, `setblocking`, `setsockopt`; a stream (`read`, `readline`, `write`) for `ssl`, `select` and `asyncio`. Addresses are `(host, port)`; `getaddrinfo` lists IPv4 first |
 | `ssl`, `tls` | TLS 1.2 (mbedTLS). `ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)` and `tls.SSLContext(...)` check the server's certificate against the trusted CAs (a bad one raises `ValueError` or `OSError`); `ssl.wrap_socket()` does not unless `cert_reqs=ssl.CERT_REQUIRED` (MicroPython's default) |
 | `requests` | HTTP and HTTPS: `requests.get(url).json()`, `post`, ... Checks certificates; `verify=False` does not |

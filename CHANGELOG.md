@@ -15,6 +15,10 @@
   `HELP_EXTERNAL` let them release what a script left and describe their
   modules in `help()`. The generator also runs on Windows (Git Bash with
   MinGW-w64). See `python/README.md`.
+* **`network` in `py` (read-only):** `isconnected()`, `ifconfig()`,
+  `status()` (interface, addresses, MAC, Wi-Fi SSID, RSSI, channel) and
+  `wait(timeout)` for scripts that start before the network is up.
+  Connecting and settings stay with the shell's commands.
 * **Network in `py`:** `socket` (`python/td_py_socket.c`: BSD sockets
   over the shell's network, IPv4 first in `getaddrinfo`, Ctrl+C and
   timeouts in blocking calls), `ssl`/`tls` (MicroPython's mbedTLS module,

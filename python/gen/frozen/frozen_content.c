@@ -215,7 +215,6 @@ enum {
     MP_QSTR_closed_space_by_space_the_space_server,
     MP_QSTR_cls,
     MP_QSTR_compat,
-    MP_QSTR_connected,
     MP_QSTR_connection_space_closed,
     MP_QSTR_content,
     MP_QSTR_content_hyphen_encoding,
@@ -355,7 +354,6 @@ enum {
     MP_QSTR_ssl_dot_py,
     MP_QSTR_ssl_params,
     MP_QSTR_start_server,
-    MP_QSTR_status,
     MP_QSTR_status_code,
     MP_QSTR_stream,
     MP_QSTR_stream_awrite,
@@ -379,7 +377,6 @@ enum {
     MP_QSTR_v,
     MP_QSTR_val,
     MP_QSTR_verify,
-    MP_QSTR_wait,
     MP_QSTR_wait_closed,
     MP_QSTR_wait_for,
     MP_QSTR_wait_for_ms,
@@ -578,7 +575,6 @@ const qstr_hash_t mp_qstr_frozen_const_hashes[] = {
     42992,
     19545,
     23137,
-    9594,
     21825,
     55724,
     62722,
@@ -718,7 +714,6 @@ const qstr_hash_t mp_qstr_frozen_const_hashes[] = {
     48942,
     30954,
     63679,
-    2417,
     62819,
     54361,
     59482,
@@ -742,7 +737,6 @@ const qstr_hash_t mp_qstr_frozen_const_hashes[] = {
     46547,
     31486,
     722,
-    21902,
     29411,
     40746,
     25035,
@@ -941,7 +935,6 @@ const qstr_len_t mp_qstr_frozen_const_lengths[] = {
     20,
     3,
     6,
-    9,
     17,
     7,
     16,
@@ -1081,7 +1074,6 @@ const qstr_len_t mp_qstr_frozen_const_lengths[] = {
     6,
     10,
     12,
-    6,
     11,
     6,
     13,
@@ -1105,7 +1097,6 @@ const qstr_len_t mp_qstr_frozen_const_lengths[] = {
     1,
     3,
     6,
-    4,
     11,
     8,
     11,
@@ -1136,7 +1127,7 @@ const qstr_pool_t mp_qstr_frozen_const_pool = {
     MP_QSTRnumber_of, // previous pool size
     true, // is_sorted
     10, // allocated entries
-    360, // used entries
+    357, // used entries
     (qstr_hash_t *)mp_qstr_frozen_const_hashes,
     (qstr_len_t *)mp_qstr_frozen_const_lengths,
     {
@@ -1313,7 +1304,6 @@ const qstr_pool_t mp_qstr_frozen_const_pool = {
         "closed by the server",
         "cls",
         "compat",
-        "connected",
         "connection closed",
         "content",
         "content-encoding",
@@ -1453,7 +1443,6 @@ const qstr_pool_t mp_qstr_frozen_const_pool = {
         "ssl.py",
         "ssl_params",
         "start_server",
-        "status",
         "status_code",
         "stream",
         "stream_awrite",
@@ -1477,7 +1466,6 @@ const qstr_pool_t mp_qstr_frozen_const_pool = {
         "v",
         "val",
         "verify",
-        "wait",
         "wait_closed",
         "wait_for",
         "wait_for_ms",
@@ -21838,7 +21826,7 @@ MICROPY_FROZEN_LIST_ITEM("aiohttp", "aiohttp/__init__.py")
 
 /*
 byte sizes:
-qstr content: 360 unique, 4545 bytes
+qstr content: 357 unique, 4514 bytes
 bc content: 14389
 const str content: 731
 const int content: 10
@@ -21848,5 +21836,5 @@ const table ptr content: 86 entries, 344 bytes
 raw code content: 247 * 4 = 3952
 mp_frozen_mpy_names_content: 232
 mp_frozen_mpy_content_size: 56
-total: 24915
+total: 24884
 */
