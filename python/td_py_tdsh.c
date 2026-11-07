@@ -3,6 +3,9 @@
  *
  *   tdsh.shell(line)    run a shell command line; returns its exit status
  *   tdsh.version()      the shell's version, "0.2.0"
+ *   tdsh.getvar(name)   a shell variable of the session (VIRTUAL_ENV, ...), or None
+ *   tdsh.user()         the session's user
+ *   tdsh.home()         the user's home directory (a shell path)
  *
  * shell() runs in the script's session, with the script user's rights,
  * starting from the script's current directory; a `cd` in it does not move
@@ -41,10 +44,42 @@ static mp_obj_t td_py_tdsh_version(void)
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(td_py_tdsh_version_obj, td_py_tdsh_version);
 
+static tdsh_session_t *session_or_raise(void)
+{
+    tdsh_session_t *session = td_py_session();
+    if (!session)
+        mp_raise_OSError(MP_EIO);
+    return session;
+}
+
+static mp_obj_t td_py_tdsh_getvar(mp_obj_t name)
+{
+    const char *v = tdsh_var_get(session_or_raise(), mp_obj_str_get_str(name));
+    return v ? mp_obj_new_str(v, strlen(v)) : mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(td_py_tdsh_getvar_obj, td_py_tdsh_getvar);
+
+static mp_obj_t td_py_tdsh_user(void)
+{
+    const char *u = session_or_raise()->username;
+    return mp_obj_new_str(u, strlen(u));
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(td_py_tdsh_user_obj, td_py_tdsh_user);
+
+static mp_obj_t td_py_tdsh_home(void)
+{
+    const char *h = session_or_raise()->home;
+    return mp_obj_new_str(h, strlen(h));
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(td_py_tdsh_home_obj, td_py_tdsh_home);
+
 static const mp_rom_map_elem_t td_py_tdsh_table[] = {
     {MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_tdsh)},
     {MP_ROM_QSTR(MP_QSTR_shell), MP_ROM_PTR(&td_py_shell_obj)},
     {MP_ROM_QSTR(MP_QSTR_version), MP_ROM_PTR(&td_py_tdsh_version_obj)},
+    {MP_ROM_QSTR(MP_QSTR_getvar), MP_ROM_PTR(&td_py_tdsh_getvar_obj)},
+    {MP_ROM_QSTR(MP_QSTR_user), MP_ROM_PTR(&td_py_tdsh_user_obj)},
+    {MP_ROM_QSTR(MP_QSTR_home), MP_ROM_PTR(&td_py_tdsh_home_obj)},
 };
 static MP_DEFINE_CONST_DICT(td_py_tdsh_globals, td_py_tdsh_table);
 

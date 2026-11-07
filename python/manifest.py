@@ -21,6 +21,11 @@ package("requests", base_path="$(TDSH_PY_DIR)/modules", opt=3)
 module("ssl.py", base_path="$(TDSH_PY_DIR)/modules", opt=3)
 module("websocket.py", base_path="$(TDSH_PY_DIR)/modules", opt=3)
 
+# upip (the shell's `upip` command) and the mip installer it uses. mip by
+# path: its manifest would also freeze micropython-lib's requests.
+module("upip.py", base_path="$(TDSH_PY_DIR)/modules", opt=3)
+package("mip", base_path="$(MPY_LIB_DIR)/micropython/mip", opt=3)
+
 # Networking from micropython-lib ($(MPY_DIR)/lib/micropython-lib, MIT):
 # the MQTT clients and the asyncio HTTP/WebSocket client.
 # umqtt directly: its manifest would also freeze micropython-lib's ssl.

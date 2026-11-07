@@ -48,6 +48,7 @@ add_library(tdsh_core STATIC
     src/core/tdsh_parser.c
     src/core/tdsh_script.c
     src/core/tdsh_builtin.c
+    src/core/tdsh_venv.c
     src/core/tdsh_terminal.c
     src/core/tdsh_board.c
 )

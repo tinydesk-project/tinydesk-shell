@@ -369,10 +369,12 @@ static void build_prompt(const tdsh_session_t *s, char *out, size_t cap)
         snprintf(display, sizeof(display), "~%s", s->cwd + strlen(s->home));
     else
         snprintf(display, sizeof(display), "%s", s->cwd);
+    char venv[TDSH_VAR_VALUE_MAX + 4];   /* "(name) " while a venv is active */
+    tdsh_prompt_prefix((tdsh_session_t *)s, venv, sizeof(venv));
     if (s_color_enabled)
-        snprintf(out, cap, "\033[1;32m%s@%s\033[0m:\033[1;34m%s\033[0m%c ", s->username, s->hostname, display, marker);
+        snprintf(out, cap, "%s\033[1;32m%s@%s\033[0m:\033[1;34m%s\033[0m%c ", venv, s->username, s->hostname, display, marker);
     else
-        snprintf(out, cap, "%s@%s:%s%c ", s->username, s->hostname, display, marker);
+        snprintf(out, cap, "%s%s@%s:%s%c ", venv, s->username, s->hostname, display, marker);
 }
 
 /* Keys read while checking for Ctrl+C (tdsh_break_requested); they come

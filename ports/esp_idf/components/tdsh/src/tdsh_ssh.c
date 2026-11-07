@@ -598,8 +598,10 @@ static void ssh_prompt(const tdsh_session_t *s, char *out, size_t out_sz)
         shown = short_path;
     }
 
-    snprintf(out, out_sz, C_GREEN "%s@%s" C_RESET ":" C_BLUE "%s" C_RESET "%c ",
-             s->username, s->hostname, shown,
+    char venv[TDSH_VAR_VALUE_MAX + 4];   /* "(name) " while a venv is active */
+    tdsh_prompt_prefix((tdsh_session_t *)s, venv, sizeof(venv));
+    snprintf(out, out_sz, "%s" C_GREEN "%s@%s" C_RESET ":" C_BLUE "%s" C_RESET "%c ",
+             venv, s->username, s->hostname, shown,
              strcmp(s->username, "root") == 0 ? '#' : '$');
 }
 

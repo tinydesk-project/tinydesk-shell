@@ -88,6 +88,8 @@ const char td_py_help_text[] =
     "umqtt.robust (MQTT), "
     "websocket (blocking client), aiohttp (asyncio HTTP and WebSocket).\n"
     "Shell: tdsh.shell('ls -l') runs a shell command and returns its status.\n"
+    "Packages: upip install NAME (in the shell) puts them in the active venv\n"
+    "(venv DIR, activate DIR) or ~/lib.\n"
     "Files: open(), os.listdir() etc. use the shell's paths (/home/root, ...).\n"
     "\n"
     "help('modules') lists the modules; help(obj) shows an object's members.\n";
@@ -392,8 +394,19 @@ static void set_argv(const char *first, int argc, char **argv)
         mp_obj_list_append(mp_sys_argv, mp_obj_new_str(argv[i], strlen(argv[i])));
 }
 
-/* sys.path: the script's directory (or '' for the prompt), the frozen
- * modules (asyncio), then /lib. */
+/* Append dir + "/lib" to sys.path. */
+static void path_add_lib(const char *dir)
+{
+    vstr_t v;
+    vstr_init(&v, strlen(dir) + 5);
+    vstr_add_str(&v, dir);
+    vstr_add_str(&v, "/lib");
+    mp_obj_list_append(mp_sys_path, mp_obj_new_str_from_vstr(&v));
+}
+
+/* sys.path: the script's directory (or '' for the prompt), the active
+ * virtual environment's lib (activate DIR; upip installs there), the frozen
+ * modules (asyncio, requests...), the user's ~/lib, then /lib. */
 static void set_path(const char *script)
 {
     mp_obj_list_init(MP_OBJ_TO_PTR(mp_sys_path), 0);
@@ -407,7 +420,12 @@ static void set_path(const char *script)
     {
         mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR_));
     }
+    const char *env = s_session ? tdsh_var_get(s_session, "VIRTUAL_ENV") : NULL;
+    if (env && env[0])
+        path_add_lib(env);
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__dot_frozen));   /* asyncio */
+    if (s_session && strcmp(s_session->username, "root") != 0)
+        path_add_lib(s_session->home);   /* upip's place outside an environment */
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
 }
 
@@ -663,15 +681,40 @@ static int cmd_py(tdsh_session_t *session, int argc, char **argv)
     return status;
 }
 
-static const tdsh_command_t s_cmd = {
-    "py",
-    "py [-m KB] [FILE [ARG...] | -c CODE [ARG...]]",
-    "MicroPython: run a script, or the interactive prompt",
-    cmd_py,
-    TDSH_CMD_RIGHT(TDSH_RIGHT_APPS),
+/* upip ARGS: the frozen upip module in py (python/modules/upip.py). */
+static int cmd_upip(tdsh_session_t *session, int argc, char **argv)
+{
+    char *args[TDSH_MAX_ARGS + 3];
+    if (argc > TDSH_MAX_ARGS)
+        return 2;
+    static char py[] = "py", c[] = "-c", code[] = "import sys, upip\nsys.exit(upip.main())";
+    int n = 0;
+    args[n++] = py;
+    args[n++] = c;
+    args[n++] = code;
+    for (int i = 1; i < argc; i++)
+        args[n++] = argv[i];
+    return cmd_py(session, n, args);
+}
+
+static const tdsh_command_t s_cmds[] = {
+    {
+        "py",
+        "py [-m KB] [FILE [ARG...] | -c CODE [ARG...]]",
+        "MicroPython: run a script, or the interactive prompt",
+        cmd_py,
+        TDSH_CMD_RIGHT(TDSH_RIGHT_APPS),
+    },
+    {
+        "upip",
+        "upip install PKG... | uninstall PKG... | list | freeze [FILE]  (-r FILE)",
+        "Install MicroPython packages into the active venv or ~/lib",
+        cmd_upip,
+        TDSH_CMD_RIGHT(TDSH_RIGHT_APPS),
+    },
 };
 
 int td_py_register_shell_command(void)
 {
-    return tdsh_register_command(&s_cmd);
+    return tdsh_register_commands(s_cmds, sizeof(s_cmds) / sizeof(s_cmds[0]));
 }

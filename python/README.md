@@ -57,6 +57,19 @@ The PC programs have `ssl` when built with mbedTLS (found in ESP-IDF, or
 `-DTDSH_MBEDTLS_DIR=...`); without it, sockets work and `ssl` raises
 ImportError.
 
+## Packages and virtual environments
+
+`upip` (a shell command; `python/modules/upip.py` run in `py`, on top of
+micropython-lib's frozen `mip`) installs packages into the active virtual
+environment or `~/lib` (`/lib` for root), and records the files each one
+added (`venv.json`, `.upip.json`) so `upip uninstall` removes exactly
+those. `venv DIR`, `activate DIR`, `deactivate` and `venvs` are core
+builtins (`src/core/tdsh_venv.c`), so every port has them; the active
+environment is the session variable `VIRTUAL_ENV`, which `set_path()` in
+`td_py.c` puts first on `sys.path` (then the frozen modules, `~/lib`,
+`/lib`). Ported from [ushell](https://github.com/schikani/ushell)'s
+`mkenv`/`activate`/`upip`.
+
 ## Registering the command
 
 An application registers the command once, before sessions start:

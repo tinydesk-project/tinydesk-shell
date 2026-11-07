@@ -91,6 +91,8 @@ int tdsh_register_core_builtins(void)
 {
     int rc = tdsh_register_commands(s_core_commands,
                                     sizeof(s_core_commands) / sizeof(s_core_commands[0]));
+    if (rc == 0)
+        rc = tdsh_register_venv_commands();
     size_t regions = 0;
     if (rc == 0 && mem_regions(&regions) && regions > 0)
     {

@@ -154,8 +154,10 @@ static void build_prompt(tdsh_session_t *session, char *out, size_t out_size)
     }
 
     const char marker = strcmp(session->username, "root") == 0 ? '#' : '$';
-    snprintf(out, out_size, C_GREEN "%s@%s" C_RESET ":" C_BLUE "%s" C_RESET "%c ",
-             session->username, session->hostname, display_path, marker);
+    char venv[TDSH_VAR_VALUE_MAX + 4];   /* "(name) " while a venv is active */
+    tdsh_prompt_prefix((tdsh_session_t *)session, venv, sizeof(venv));
+    snprintf(out, out_size, "%s" C_GREEN "%s@%s" C_RESET ":" C_BLUE "%s" C_RESET "%c ",
+             venv, session->username, session->hostname, display_path, marker);
 }
 
 static bool *transport_swallow_flag(void)

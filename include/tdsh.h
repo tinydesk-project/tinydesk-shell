@@ -178,6 +178,13 @@ int tdsh_execute_line(tdsh_session_t *session, const char *line);
  * uptime/platform info, and shell conveniences. */
 int tdsh_register_core_builtins(void);
 
+/* Python virtual environments: venv, activate, deactivate, venvs (part of
+ * the core builtins). The active one is the session variable VIRTUAL_ENV;
+ * tdsh_prompt_prefix() writes "(name) " for the prompt while one is active,
+ * "" otherwise. */
+int tdsh_register_venv_commands(void);
+void tdsh_prompt_prefix(tdsh_session_t *session, char *out, size_t cap);
+
 /* Variables. */
 const char *tdsh_var_get(tdsh_session_t *session, const char *name);
 int tdsh_var_set(tdsh_session_t *session, const char *name, const char *value);

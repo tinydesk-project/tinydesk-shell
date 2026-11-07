@@ -17,7 +17,7 @@ import tempfile
 
 MODULES = [
     "tdsh", "network", "socket", "ssl", "machine", "neopixel", "websocket",
-    "requests", "umqtt.simple", "umqtt.robust", "aiohttp",
+    "requests", "umqtt.simple", "umqtt.robust", "aiohttp", "upip", "mip",
 ]
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONTRACT = os.path.join(HERE, "..", "python", "py_contract.json")

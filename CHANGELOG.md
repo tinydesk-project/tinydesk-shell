@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+* **Packages and virtual environments (from ushell):** `venv DIR`,
+  `activate DIR`, `deactivate`, `venvs` (`src/core/tdsh_venv.c`, every
+  port; the active one is the session variable `VIRTUAL_ENV` and the prompt
+  shows `(name)`: `tdsh_prompt_prefix()`), and `upip install | uninstall |
+  list | freeze` with `-r FILE` (`python/modules/upip.py` on top of a
+  frozen `mip`), which records the files each package added so `uninstall`
+  removes exactly those. `py` puts the active environment's `lib` first on
+  `sys.path`, then the frozen modules, `~/lib` and `/lib`. `tdsh.getvar()`,
+  `tdsh.user()`, `tdsh.home()`.
 * **API freeze for 1.0 (STABILITY.md):** semantic versioning from 1.0;
   `TDSH_VERSION_MAJOR`, `_MINOR`, `_PATCH`. The public C API is recorded in
   `api/tdsh.api` (`tools/check_api.py`), py's modules in

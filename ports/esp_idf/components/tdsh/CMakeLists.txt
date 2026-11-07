@@ -9,6 +9,7 @@ idf_component_register(
         "${TDSH_SDK_ROOT}/src/core/tdsh_parser.c"
         "${TDSH_SDK_ROOT}/src/core/tdsh_script.c"
         "${TDSH_SDK_ROOT}/src/core/tdsh_builtin.c"
+        "${TDSH_SDK_ROOT}/src/core/tdsh_venv.c"
         "${TDSH_SDK_ROOT}/src/core/tdsh_terminal.c"
         "${TDSH_SDK_ROOT}/src/core/tdsh_board.c"
         "src/tdsh_console_espidf.c"

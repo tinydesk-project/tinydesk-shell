@@ -22,6 +22,8 @@ const tdsh_command_t *tdsh_command_find(const char *name);
 int tdsh_execute_argv(tdsh_session_t *session, int argc, char **argv);
 int tdsh_execute_line(tdsh_session_t *session, const char *line);
 int tdsh_register_core_builtins(void);
+int tdsh_register_venv_commands(void);
+void tdsh_prompt_prefix(tdsh_session_t *session, char *out, size_t cap);
 const char *tdsh_var_get(tdsh_session_t *session, const char *name);
 int tdsh_var_set(tdsh_session_t *session, const char *name, const char *value);
 int tdsh_var_unset(tdsh_session_t *session, const char *name);
@@ -309,6 +311,12 @@ extern const char td_py_help_text[];
 | set | set | Show shell variables |
 | unset | unset <name ...> | Remove shell variables |
 | version | version | Show TinyDesk Shell version |
+| venv | venv DIR | Make a Python virtual environment (DIR/lib, DIR/venv.json) |
+| activate | activate DIR | Use a Python virtual environment in this session |
+| deactivate | deactivate | Stop using the active virtual environment |
+| venvs | venvs | List the virtual environments you made |
+| py | py [-m KB] [FILE [ARG...] \| -c CODE [ARG...]] | MicroPython: run a script, or the interactive prompt (registered by td_py_register_shell_command) |
+| upip | upip install PKG... \| uninstall PKG... \| list \| freeze [FILE] (-r FILE) | Install MicroPython packages into the active venv or ~/lib (with py) |
 | peek | peek -l \| peek [-w 8\|16\|32] <address> [count] | Read memory the port allows (root; only on ports with `mem_regions`: the ESP32, ESP32-C6 and ESP32-S3 firmware) |
 | poke | poke [-w 8\|16\|32] <address> <value> | Write memory the port allows (root; only on ports with `mem_regions`; on the ESP32 boards the GPIO output registers) |
 | users | users | List TinyDesk Shell users |

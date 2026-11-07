@@ -52,6 +52,8 @@ tdsh.h: const tdsh_command_t *tdsh_command_find(const char *name);
 tdsh.h: int tdsh_execute_argv(tdsh_session_t *session, int argc, char **argv);
 tdsh.h: int tdsh_execute_line(tdsh_session_t *session, const char *line);
 tdsh.h: int tdsh_register_core_builtins(void);
+tdsh.h: int tdsh_register_venv_commands(void);
+tdsh.h: void tdsh_prompt_prefix(tdsh_session_t *session, char *out, size_t cap);
 tdsh.h: const char *tdsh_var_get(tdsh_session_t *session, const char *name);
 tdsh.h: int tdsh_var_set(tdsh_session_t *session, const char *name, const char *value);
 tdsh.h: int tdsh_var_unset(tdsh_session_t *session, const char *name);

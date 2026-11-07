@@ -175,6 +175,15 @@
     "unique_id"
    ]
   },
+  "mip": {
+   "classes": {},
+   "names": [
+    "const",
+    "install",
+    "requests",
+    "sys"
+   ]
+  },
   "neopixel": {
    "classes": {
     "NeoPixel": [
@@ -291,7 +300,10 @@
   "tdsh": {
    "classes": {},
    "names": [
+    "getvar",
+    "home",
     "shell",
+    "user",
     "version"
    ]
   },
@@ -343,6 +355,22 @@
     "hexlify",
     "socket",
     "struct"
+   ]
+  },
+  "upip": {
+   "classes": {},
+   "names": [
+    "USAGE",
+    "freeze",
+    "install",
+    "json",
+    "listing",
+    "main",
+    "os",
+    "place",
+    "sys",
+    "tdsh",
+    "uninstall"
    ]
   },
   "websocket": {
