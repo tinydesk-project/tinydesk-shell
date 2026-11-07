@@ -60,6 +60,27 @@ if(TDSH_BUILD_TESTS)
     add_test(NAME tdsh_permissions_tests COMMAND tdsh_permissions_tests)
 endif()
 
+# The public API against api/tdsh.api (tools/check_api.py; see STABILITY.md).
+if(TDSH_BUILD_TESTS)
+    find_package(Python3 COMPONENTS Interpreter)
+    if(Python3_FOUND)
+        enable_testing()
+        set(TDSH_PUBLIC_HEADERS
+            include/tdsh.h include/tdsh_board.h include/tdsh_console_access.h
+            include/tdsh_permissions.h include/tdsh_platform.h include/tdsh_terminal.h
+            ports/esp_idf/components/tdsh/include/tdsh_espidf.h
+            ports/posix/tdsh_posix.h ports/windows/tdsh_platform_win.h
+            python/td_py.h python/td_py_tdsh.h)
+        add_test(NAME tdsh_api_stable
+                 COMMAND ${Python3_EXECUTABLE} tools/check_api.py api/tdsh.api ${TDSH_PUBLIC_HEADERS}
+                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+        # The board.conf keys the code reads against api/board_keys.txt.
+        add_test(NAME tdsh_board_keys
+                 COMMAND ${Python3_EXECUTABLE} tools/check_board_keys.py api/board_keys.txt src ports main python
+                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+endif()
+
 if(TDSH_BUILD_TESTS AND TDSH_TEST_MBEDTLS_DIR AND NOT MSVC)
     if(NOT TARGET mbedcrypto)
         set(ENABLE_TESTING OFF CACHE BOOL "" FORCE)
@@ -107,6 +128,12 @@ if(WIN32)
         tdsh_add_python(NAME tdsh_python LINK tdsh_core COMPAT_FLAG ${TDSH_WIN_COMPAT})
         tdsh_python_tls()
         target_link_libraries(tdsh_host PRIVATE tdsh_python)
+        # py's modules against python/py_contract.json (STABILITY.md).
+        if(TDSH_BUILD_TESTS AND Python3_FOUND)
+            add_test(NAME tdsh_py_contract
+                     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_py_contract.py
+                             $<TARGET_FILE:tdsh_host>)
+        endif()
         set(TDSH_SMOKE_PY "py -c \"print('py', 6 * 7)\"\n")
         set(TDSH_SMOKE_PY_EXPECT ".*py 42")
     endif()
@@ -173,6 +200,12 @@ if(TDSH_BUILD_POSIX)
         tdsh_add_python(NAME tdsh_python LINK tdsh_core)
         tdsh_python_tls()
         target_link_libraries(tdsh_host PRIVATE tdsh_python)
+        # py's modules against python/py_contract.json (STABILITY.md).
+        if(TDSH_BUILD_TESTS AND Python3_FOUND)
+            add_test(NAME tdsh_py_contract
+                     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_py_contract.py
+                             $<TARGET_FILE:tdsh_host>)
+        endif()
     endif()
 endif()
 

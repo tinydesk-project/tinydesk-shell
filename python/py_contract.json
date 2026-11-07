@@ -1,0 +1,382 @@
+{
+ "contract": "tdsh-py",
+ "modules": {
+  "aiohttp": {
+   "classes": {
+    "ChunkedClientResponse": [
+     "json",
+     "read",
+     "text"
+    ],
+    "ClientResponse": [
+     "json",
+     "read",
+     "text"
+    ],
+    "ClientSession": [
+     "delete",
+     "get",
+     "head",
+     "options",
+     "patch",
+     "post",
+     "put",
+     "request",
+     "request_raw",
+     "ws_connect"
+    ],
+    "ClientWebSocketResponse": [
+     "close",
+     "receive_bytes",
+     "receive_json",
+     "receive_str",
+     "send_bytes",
+     "send_json",
+     "send_str"
+    ],
+    "WSMsgType": [
+     "BINARY",
+     "ERROR",
+     "TEXT"
+    ],
+    "WebSocketClient": [
+     "BINARY",
+     "CLOSE",
+     "CONT",
+     "PING",
+     "PONG",
+     "TEXT",
+     "close",
+     "connect",
+     "handshake",
+     "receive",
+     "send"
+    ]
+   },
+   "names": [
+    "ChunkedClientResponse",
+    "ClientResponse",
+    "ClientSession",
+    "ClientWebSocketResponse",
+    "HttpVersion10",
+    "HttpVersion11",
+    "WSMsgType",
+    "WebSocketClient",
+    "aiohttp_ws",
+    "asyncio"
+   ]
+  },
+  "machine": {
+   "classes": {
+    "ADC": [
+     "read_u16",
+     "read_uv"
+    ],
+    "I2C": [
+     "deinit",
+     "init",
+     "readfrom",
+     "readfrom_into",
+     "readfrom_mem",
+     "readfrom_mem_into",
+     "readinto",
+     "scan",
+     "start",
+     "stop",
+     "write",
+     "writeto",
+     "writeto_mem",
+     "writevto"
+    ],
+    "PWM": [
+     "deinit",
+     "duty_ns",
+     "duty_u16",
+     "freq",
+     "init"
+    ],
+    "Pin": [
+     "IN",
+     "IRQ_FALLING",
+     "IRQ_RISING",
+     "OPEN_DRAIN",
+     "OUT",
+     "PULL_DOWN",
+     "PULL_UP",
+     "init",
+     "irq",
+     "off",
+     "on",
+     "toggle",
+     "value"
+    ],
+    "SPI": [
+     "LSB",
+     "MSB",
+     "deinit",
+     "init",
+     "read",
+     "readinto",
+     "write",
+     "write_readinto"
+    ],
+    "SoftI2C": [
+     "deinit",
+     "init",
+     "readfrom",
+     "readfrom_into",
+     "readfrom_mem",
+     "readfrom_mem_into",
+     "readinto",
+     "scan",
+     "start",
+     "stop",
+     "write",
+     "writeto",
+     "writeto_mem",
+     "writevto"
+    ],
+    "SoftSPI": [
+     "LSB",
+     "MSB",
+     "deinit",
+     "init",
+     "read",
+     "readinto",
+     "write",
+     "write_readinto"
+    ],
+    "UART": [
+     "any",
+     "deinit",
+     "flush",
+     "init",
+     "read",
+     "readinto",
+     "readline",
+     "txdone",
+     "write"
+    ]
+   },
+   "names": [
+    "ADC",
+    "I2C",
+    "PWM",
+    "Pin",
+    "SPI",
+    "SoftI2C",
+    "SoftSPI",
+    "UART",
+    "bitstream",
+    "freq",
+    "idle",
+    "soft_reset",
+    "time_pulse_us",
+    "unique_id"
+   ]
+  },
+  "neopixel": {
+   "classes": {
+    "NeoPixel": [
+     "ORDER",
+     "fill",
+     "write"
+    ]
+   },
+   "names": [
+    "NeoPixel",
+    "bitstream"
+   ]
+  },
+  "network": {
+   "classes": {},
+   "names": [
+    "ifconfig",
+    "isconnected",
+    "status",
+    "wait"
+   ]
+  },
+  "requests": {
+   "classes": {
+    "BodyStream": [
+     "close",
+     "read",
+     "readinto"
+    ],
+    "Response": [
+     "close",
+     "content",
+     "json",
+     "text"
+    ]
+   },
+   "names": [
+    "BodyStream",
+    "Response",
+    "delete",
+    "get",
+    "head",
+    "patch",
+    "post",
+    "put",
+    "request",
+    "socket"
+   ]
+  },
+  "socket": {
+   "classes": {
+    "socket": [
+     "accept",
+     "bind",
+     "close",
+     "connect",
+     "listen",
+     "makefile",
+     "read",
+     "readinto",
+     "readline",
+     "recv",
+     "recvfrom",
+     "send",
+     "sendall",
+     "sendto",
+     "setblocking",
+     "setsockopt",
+     "settimeout",
+     "write"
+    ]
+   },
+   "names": [
+    "AF_INET",
+    "AF_INET6",
+    "IPPROTO_IP",
+    "IPPROTO_TCP",
+    "IPPROTO_UDP",
+    "SOCK_DGRAM",
+    "SOCK_RAW",
+    "SOCK_STREAM",
+    "SOL_SOCKET",
+    "SO_BROADCAST",
+    "SO_KEEPALIVE",
+    "SO_REUSEADDR",
+    "TCP_NODELAY",
+    "getaddrinfo",
+    "socket"
+   ]
+  },
+  "ssl": {
+   "classes": {
+    "SSLContext": [
+     "load_cert_chain",
+     "load_verify_locations",
+     "verify_mode",
+     "wrap_socket"
+    ]
+   },
+   "names": [
+    "CERT_NONE",
+    "CERT_OPTIONAL",
+    "CERT_REQUIRED",
+    "MBEDTLS_VERSION",
+    "PROTOCOL_DTLS_CLIENT",
+    "PROTOCOL_DTLS_SERVER",
+    "PROTOCOL_TLS_CLIENT",
+    "PROTOCOL_TLS_SERVER",
+    "SSLContext",
+    "tls",
+    "wrap_socket"
+   ]
+  },
+  "tdsh": {
+   "classes": {},
+   "names": [
+    "shell",
+    "version"
+   ]
+  },
+  "umqtt.robust": {
+   "classes": {
+    "MQTTClient": [
+     "DEBUG",
+     "DELAY",
+     "check_msg",
+     "connect",
+     "delay",
+     "disconnect",
+     "log",
+     "ping",
+     "publish",
+     "reconnect",
+     "set_callback",
+     "set_last_will",
+     "subscribe",
+     "unsubscribe",
+     "wait_msg"
+    ]
+   },
+   "names": [
+    "MQTTClient",
+    "simple",
+    "time"
+   ]
+  },
+  "umqtt.simple": {
+   "classes": {
+    "MQTTClient": [
+     "check_msg",
+     "connect",
+     "disconnect",
+     "ping",
+     "publish",
+     "set_callback",
+     "set_last_will",
+     "subscribe",
+     "unsubscribe",
+     "wait_msg"
+    ],
+    "MQTTException": []
+   },
+   "names": [
+    "MQTTClient",
+    "MQTTException",
+    "hexlify",
+    "socket",
+    "struct"
+   ]
+  },
+  "websocket": {
+   "classes": {
+    "WebSocket": [
+     "close",
+     "ping",
+     "recv",
+     "recv_frame",
+     "send",
+     "send_binary",
+     "send_frame",
+     "settimeout"
+    ],
+    "WebSocketConnectionClosedException": [],
+    "WebSocketException": []
+   },
+   "names": [
+    "OP_BINARY",
+    "OP_CLOSE",
+    "OP_CONT",
+    "OP_PING",
+    "OP_PONG",
+    "OP_TEXT",
+    "WebSocket",
+    "WebSocketConnectionClosedException",
+    "WebSocketException",
+    "binascii",
+    "create_connection",
+    "random",
+    "socket",
+    "struct"
+   ]
+  }
+ },
+ "policy": "Within 1.x names are only added; none is removed or changes meaning (STABILITY.md)."
+}

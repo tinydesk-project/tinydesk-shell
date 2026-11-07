@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+* **API freeze for 1.0 (STABILITY.md):** semantic versioning from 1.0;
+  `TDSH_VERSION_MAJOR`, `_MINOR`, `_PATCH`. The public C API is recorded in
+  `api/tdsh.api` (`tools/check_api.py`), py's modules in
+  `python/py_contract.json` (`tools/check_py_contract.py`) and the
+  board.conf keys in `api/board_keys.txt` (`tools/check_board_keys.py`);
+  ctest fails on any difference until it is recorded. **Moved out of
+  `tdsh_espidf.h`** into `src/tdsh_espidf_internal.h` (not public): the
+  `tdsh_cmd_*` handlers, `tdsh_espidf_register_commands`,
+  `tdsh_interactive_readline`, `tdsh_fs_init`, `tdsh_fs_print_info`,
+  `tdsh_network_init`, `tdsh_wifi_init`/`_stop`/`_autoconnect`/`_netif`,
+  `tdsh_eth_start`/`_stop`/`_netif`, `tdsh_netmount_init`,
+  `tdsh_netmount_translate_logical`, `tdsh_sdcard_init`,
+  `tdsh_sdcard_translate_logical`, `tdsh_time_sync_start`,
+  `tdsh_ssh_terminal_columns`, `tdsh_ssh_break_requested`.
 * **MicroPython (moved from TinyDesk):** the `py` command and its port
   (`python/`: heap and stack, files through the shell's paths and rights,
   `machine` with Pin, ADC, PWM, I2C, SPI, UART and bitstream, frozen

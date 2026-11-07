@@ -1,0 +1,220 @@
+td_py.h: int td_py_register_shell_command(void);
+td_py.h: void td_py_set_break_check(bool (*fn)(void));
+td_py.h: void td_py_set_console(int (*read_key)(void), void (*raw_mode)(bool on));
+td_py.h: tdsh_session_t *td_py_session(void);
+td_py.h: int td_py_add_cleanup(void (*fn)(void));
+td_py.h: extern const char td_py_help_text[];
+td_py_tdsh.h: extern const mp_obj_fun_builtin_fixed_t td_py_shell_obj;
+tdsh.h: #define TDSH_MAX_LINE 512
+tdsh.h: #define TDSH_MAX_ARGS 48
+tdsh.h: #define TDSH_MAX_PATH 256
+tdsh.h: #define TDSH_MAX_REAL_PATH (TDSH_MAX_PATH * 2 + 96)
+tdsh.h: #define TDSH_MAX_VARS 64
+tdsh.h: #define TDSH_VAR_NAME_MAX 32
+tdsh.h: #define TDSH_VAR_VALUE_MAX 256
+tdsh.h: #define TDSH_USERNAME_MAX 32
+tdsh.h: #define TDSH_SCRIPT_EXT ".tdsh"
+tdsh.h: #define TDSH_STARTUP_FILE ".tdshrc.tdsh"
+tdsh.h: #define TDSH_HOSTNAME_MAX 32
+tdsh.h: #define TDSH_MAX_COMMANDS 128
+tdsh.h: #define TDSH_COPY_BUFFER_SIZE 4096
+tdsh.h: #define TDSH_SCRIPT_TASK_STACK 32768
+tdsh.h: #define TDSH_SCRIPT_TASK_PRIORITY 4
+tdsh.h: #define TDSH_MOUNT_POINT "/fs"
+tdsh.h: #define TDSH_PARTITION_LABEL "storage"
+tdsh.h: #define TDSH_CMD_ROOT_ONLY (1u << 0)
+tdsh.h: #define TDSH_CMD_INTERACTIVE (1u << 1)
+tdsh.h: #define TDSH_CMD_BG_ALLOWED (1u << 2)
+tdsh.h: #define TDSH_CMD_ADMIN_ONLY (1u << 3)
+tdsh.h: #define TDSH_CMD_RIGHT(right) ((uint32_t)(right) << 8)
+tdsh.h: #define TDSH_TERM_CAP_ANSI (1u << 0)
+tdsh.h: #define TDSH_TERM_CAP_COLOR (1u << 1)
+tdsh.h: #define TDSH_TERM_CAP_FULLSCREEN (1u << 2)
+tdsh.h: #define TDSH_CORE_CONFIG_DEFAULT() { .hostname = "device", .default_user = "root", .fs_root = ".", .history_length = 50, .platform = NULL, .path_translate = NULL, .path_translate_context = NULL, }
+tdsh.h: typedef int tdsh_status_t;
+tdsh.h: typedef struct { bool used; char name[TDSH_VAR_NAME_MAX]; char value[TDSH_VAR_VALUE_MAX]; } tdsh_var_t;
+tdsh.h: typedef struct tdsh_session { char username[TDSH_USERNAME_MAX]; char hostname[TDSH_HOSTNAME_MAX]; char cwd[TDSH_MAX_PATH]; char home[TDSH_MAX_PATH]; tdsh_var_t vars[TDSH_MAX_VARS]; int last_status; void *script_runtime; void *user_context; bool interactive; uint32_t terminal_caps; uint32_t user_generation; bool logout_requested; } tdsh_session_t;
+tdsh.h: typedef int (*tdsh_command_fn_t)(tdsh_session_t *session, int argc, char **argv);
+tdsh.h: typedef struct { const char *name; const char *usage; const char *help; tdsh_command_fn_t fn; uint32_t flags; } tdsh_command_t;
+tdsh.h: typedef bool (*tdsh_path_translate_fn_t)(void *context, const char *logical_path, char *real_out, size_t real_out_size);
+tdsh.h: typedef struct { const char *hostname; const char *default_user; const char *fs_root; size_t history_length; const tdsh_platform_api_t *platform; tdsh_path_translate_fn_t path_translate; void *path_translate_context; tdsh_role_t (*user_role)(const char *username); uint32_t (*user_rights)(const char *username); uint32_t (*user_generation)(const char *username); } tdsh_core_config_t;
+tdsh.h: typedef struct { size_t live_blocks; size_t live_bytes; size_t peak_blocks; size_t peak_bytes; size_t total_allocations; size_t failed_allocations; } tdsh_memory_stats_t;
+tdsh.h: int tdsh_core_init(const tdsh_core_config_t *config);
+tdsh.h: void tdsh_core_reset(void);
+tdsh.h: const tdsh_core_config_t *tdsh_core_config(void);
+tdsh.h: const char *tdsh_platform_name(void);
+tdsh.h: int tdsh_session_init(tdsh_session_t *session, const char *username, bool interactive);
+tdsh.h: int tdsh_session_clone(tdsh_session_t *dst, const tdsh_session_t *src, bool interactive);
+tdsh.h: int tdsh_register_command(const tdsh_command_t *command);
+tdsh.h: int tdsh_register_commands(const tdsh_command_t *commands, size_t count);
+tdsh.h: const tdsh_command_t *tdsh_commands_get(size_t *count);
+tdsh.h: const tdsh_command_t *tdsh_command_find(const char *name);
+tdsh.h: int tdsh_execute_argv(tdsh_session_t *session, int argc, char **argv);
+tdsh.h: int tdsh_execute_line(tdsh_session_t *session, const char *line);
+tdsh.h: int tdsh_register_core_builtins(void);
+tdsh.h: const char *tdsh_var_get(tdsh_session_t *session, const char *name);
+tdsh.h: int tdsh_var_set(tdsh_session_t *session, const char *name, const char *value);
+tdsh.h: int tdsh_var_unset(tdsh_session_t *session, const char *name);
+tdsh.h: int tdsh_path_normalize(tdsh_session_t *session, const char *input, char *logical_out, size_t logical_out_size);
+tdsh.h: int tdsh_path_to_real(tdsh_session_t *session, const char *input, char *real_out, size_t real_out_size, char *logical_out, size_t logical_out_size);
+tdsh.h: int tdsh_parse_words(tdsh_session_t *session, const char *input, char *storage, size_t storage_size, char **argv, int *argc_out);
+tdsh.h: int tdsh_eval_int_expr(tdsh_session_t *session, const char *expr, int64_t *value_out);
+tdsh.h: int tdsh_run_script(tdsh_session_t *session, const char *path, bool background);
+tdsh.h: int tdsh_run_script_in_session(tdsh_session_t *session, const char *path);
+tdsh.h: bool tdsh_script_special_var(tdsh_session_t *session, const char *name, char *out, size_t out_size);
+tdsh.h: bool tdsh_script_try_function(tdsh_session_t *session, int argc, char **argv, int *status_out);
+tdsh.h: uint64_t tdsh_monotonic_ms(void);
+tdsh.h: void tdsh_sleep_ms(uint32_t ms);
+tdsh.h: void tdsh_yield(void);
+tdsh.h: int tdsh_random_bytes(void *buffer, size_t length);
+tdsh.h: void *tdsh_malloc(size_t size);
+tdsh.h: void *tdsh_calloc(size_t count, size_t size);
+tdsh.h: void *tdsh_realloc(void *ptr, size_t size);
+tdsh.h: void tdsh_free(void *ptr);
+tdsh.h: char *tdsh_strdup(const char *text);
+tdsh.h: void tdsh_memory_get_stats(tdsh_memory_stats_t *stats);
+tdsh_board.h: #define TDSH_BOARD_KEY_MAX 40
+tdsh_board.h: #define TDSH_BOARD_VALUE_MAX 96
+tdsh_board.h: typedef enum { TDSH_BOARD_UNSET = 0, TDSH_BOARD_BUILTIN, TDSH_BOARD_FILE, } tdsh_board_origin_t;
+tdsh_board.h: int tdsh_board_parse(const char *text, void (*fn)(const char *key, const char *value, int line, void *user), void *user);
+tdsh_board.h: int tdsh_board_load(const char *builtin_text, const char *file_path);
+tdsh_board.h: const char *tdsh_board_get(const char *key);
+tdsh_board.h: int tdsh_board_int(const char *key, int def);
+tdsh_board.h: bool tdsh_board_bool(const char *key, bool def);
+tdsh_board.h: tdsh_board_origin_t tdsh_board_origin(const char *key);
+tdsh_board.h: int tdsh_board_count(void);
+tdsh_board.h: bool tdsh_board_at(int index, const char **key, const char **value, tdsh_board_origin_t *origin);
+tdsh_board.h: const char *tdsh_board_builtin(void);
+tdsh_board.h: const char *tdsh_board_file(void);
+tdsh_board.h: int tdsh_board_set(const char *key, const char *value);
+tdsh_board.h: int tdsh_board_unsaved(void);
+tdsh_board.h: int tdsh_board_save_builtin(void);
+tdsh_console_access.h: enum { TDSH_ACCESS_LOCAL, TDSH_ACCESS_RECOVERY, TDSH_ACCESS_REMOTE };
+tdsh_console_access.h: typedef atomic_int tdsh_console_access_t;
+tdsh_console_access.h: static inline bool tdsh_access_is_physical(tdsh_console_access_t *access) { return atomic_load(access) != TDSH_ACCESS_REMOTE; } static inline bool tdsh_access_begin_recovery(tdsh_console_access_t *access) { int expected = TDSH_ACCESS_LOCAL; return atomic_compare_exchange_strong(access, &expected, TDSH_ACCESS_RECOVERY); } static inline void tdsh_access_end_recovery(tdsh_console_access_t *access) { int expected = TDSH_ACCESS_RECOVERY; (void)atomic_compare_exchange_strong(access, &expected, TDSH_ACCESS_LOCAL); } static inline bool tdsh_access_mark_remote(tdsh_console_access_t *access) { int expected = TDSH_ACCESS_LOCAL; return atomic_compare_exchange_strong(access, &expected, TDSH_ACCESS_REMOTE) || expected == TDSH_ACCESS_REMOTE; }
+tdsh_espidf.h: #define TDSH_SHELL_TASK_STACK 24576
+tdsh_espidf.h: #define TDSH_DEFAULT_FTP_PORT 21
+tdsh_espidf.h: #define TDSH_DEFAULT_SSH_PORT 22
+tdsh_espidf.h: #define TDSH_ESP_IDF_CONFIG_DEFAULT() { .hostname = "esp32", .default_user = "root", .history_length = 50, .format_fs_if_mount_failed = true, .register_core_builtins = true, .register_network_commands = true, .register_remote_server_commands = true, .register_editor_commands = true, .register_hardware_commands = true, .init_network_manager = true, .board_config = NULL, }
+tdsh_espidf.h: #define TDSH_CONFIG_DEFAULT() TDSH_ESP_IDF_CONFIG_DEFAULT()
+tdsh_espidf.h: #define TDSH_HINT_MAX 64
+tdsh_espidf.h: #define TDSH_FACTORY_ROOT_PASSWORD "TinyDesk"
+tdsh_espidf.h: #define TDSH_FACTORY_HINT "Type: " TDSH_FACTORY_ROOT_PASSWORD
+tdsh_espidf.h: typedef struct { const char *hostname; const char *default_user; size_t history_length; bool format_fs_if_mount_failed; bool register_core_builtins; bool register_network_commands; bool register_remote_server_commands; bool register_editor_commands; bool register_hardware_commands; bool init_network_manager; const char *board_config; } tdsh_espidf_config_t;
+tdsh_espidf.h: esp_err_t tdsh_espidf_init(const tdsh_espidf_config_t *config);
+tdsh_espidf.h: esp_err_t tdsh_espidf_start(void);
+tdsh_espidf.h: void tdsh_espidf_run_console(void);
+tdsh_espidf.h: void tdsh_espidf_console_set_user(const char *username);
+tdsh_espidf.h: const char *tdsh_espidf_console_user(void);
+tdsh_espidf.h: void tdsh_espidf_set_console_columns(int (*columns)(void));
+tdsh_espidf.h: void tdsh_espidf_set_console_flush(void (*flush)(void));
+tdsh_espidf.h: const tdsh_platform_api_t *tdsh_espidf_platform(void);
+tdsh_espidf.h: typedef tdsh_espidf_config_t tdsh_config_t;
+tdsh_espidf.h: esp_err_t tdsh_init(const tdsh_config_t *config);
+tdsh_espidf.h: esp_err_t tdsh_start(void);
+tdsh_espidf.h: int tdsh_console_readline(const char *prompt, char *buf, size_t capacity, bool echo_input);
+tdsh_espidf.h: bool tdsh_is_local_console_task(void);
+tdsh_espidf.h: bool tdsh_is_physical_console(void);
+tdsh_espidf.h: bool tdsh_console_begin_recovery(void);
+tdsh_espidf.h: void tdsh_console_end_recovery(void);
+tdsh_espidf.h: bool tdsh_console_mark_remote(void);
+tdsh_espidf.h: int tdsh_session_set_user(tdsh_session_t *session, const char *username);
+tdsh_espidf.h: int tdsh_session_set_user_generation(tdsh_session_t *session, const char *username, uint32_t generation);
+tdsh_espidf.h: int tdsh_run_user_startup(tdsh_session_t *session);
+tdsh_espidf.h: esp_err_t tdsh_users_init(void);
+tdsh_espidf.h: bool tdsh_user_exists(const char *username);
+tdsh_espidf.h: bool tdsh_user_authenticate(const char *username, const char *password);
+tdsh_espidf.h: uint32_t tdsh_user_login(const char *username, const char *password);
+tdsh_espidf.h: typedef struct { char name[TDSH_USERNAME_MAX]; tdsh_role_t role; uint32_t rights; } tdsh_user_info_t;
+tdsh_espidf.h: int tdsh_user_list(int index, tdsh_user_info_t *out);
+tdsh_espidf.h: tdsh_role_t tdsh_user_role(const char *username);
+tdsh_espidf.h: uint32_t tdsh_user_rights(const char *username);
+tdsh_espidf.h: uint32_t tdsh_user_generation(const char *username);
+tdsh_espidf.h: int tdsh_user_create(const char *actor, const char *name, const char *password, tdsh_role_t role, uint32_t rights);
+tdsh_espidf.h: int tdsh_user_access_set(const char *actor, const char *name, tdsh_role_t role, uint32_t rights);
+tdsh_espidf.h: int tdsh_user_password_set(const char *actor, const char *name, const char *old_password, const char *new_password);
+tdsh_espidf.h: int tdsh_user_hint_get(const char *name, char *out, size_t size);
+tdsh_espidf.h: int tdsh_user_hint_set(const char *actor, const char *name, const char *hint);
+tdsh_espidf.h: bool tdsh_hint_reveals(const char *hint, const char *password);
+tdsh_espidf.h: bool tdsh_remembered_user(char *out, size_t size);
+tdsh_espidf.h: uint32_t tdsh_remembered_login(char *out, size_t size);
+tdsh_espidf.h: bool tdsh_user_remember_allowed(const char *username);
+tdsh_espidf.h: int tdsh_boot_login_require_password(void);
+tdsh_espidf.h: bool tdsh_remote_access_ready(void);
+tdsh_espidf.h: bool tdsh_user_authenticate_remote(const char *username, const char *password);
+tdsh_espidf.h: int tdsh_boot_user_get(char *out, size_t out_size);
+tdsh_espidf.h: int tdsh_boot_user_set(const char *username);
+tdsh_espidf.h: int tdsh_boot_user_default(const char *username);
+tdsh_espidf.h: typedef enum { TDSH_NETWORK_MODE_AUTO = 0, TDSH_NETWORK_MODE_LAN, TDSH_NETWORK_MODE_WIFI, TDSH_NETWORK_MODE_BOTH, } tdsh_network_mode_t;
+tdsh_espidf.h: typedef struct { bool initialized; bool connected; uint8_t mac[6]; char ssid[33]; int rssi; unsigned channel; struct { uint32_t addr; } ip, netmask, gateway, dns; } tdsh_wifi_info_t;
+tdsh_espidf.h: typedef struct { bool enabled; bool initialized; bool link_up; bool connected; bool dhcp; uint8_t mac[6]; int speed_mbps; bool full_duplex; struct { uint32_t addr; } ip, netmask, gateway, dns; } tdsh_eth_info_t;
+tdsh_espidf.h: bool tdsh_network_is_online(void);
+tdsh_espidf.h: tdsh_network_mode_t tdsh_network_get_mode(void);
+tdsh_espidf.h: bool tdsh_wifi_is_connected(void);
+tdsh_espidf.h: int tdsh_wifi_get_info(tdsh_wifi_info_t *info);
+tdsh_espidf.h: typedef struct { char ssid[33]; int rssi; bool secure; bool saved; } tdsh_wifi_ap_t;
+tdsh_espidf.h: int tdsh_wifi_scan_list(tdsh_wifi_ap_t *out, int max, const char *user);
+tdsh_espidf.h: int tdsh_wifi_save(const char *ssid, const char *password, const char *user);
+tdsh_espidf.h: int tdsh_wifi_forget(const char *ssid, const char *user);
+tdsh_espidf.h: int tdsh_wifi_connect_saved(const char *ssid, const char *user);
+tdsh_espidf.h: int tdsh_wifi_disconnect_now(void);
+tdsh_espidf.h: bool tdsh_eth_is_connected(void);
+tdsh_espidf.h: int tdsh_eth_get_info(tdsh_eth_info_t *info);
+tdsh_espidf.h: void tdsh_netmount_remove_owner(const char *owner);
+tdsh_espidf.h: esp_err_t tdsh_sdcard_mount(void);
+tdsh_espidf.h: esp_err_t tdsh_sdcard_unmount(void);
+tdsh_espidf.h: bool tdsh_sdcard_configured(void);
+tdsh_espidf.h: bool tdsh_sdcard_mounted(void);
+tdsh_espidf.h: void *tdsh_sdcard_card(void);
+tdsh_espidf.h: bool tdsh_time_auto(void);
+tdsh_espidf.h: int tdsh_time_set_auto(bool on);
+tdsh_espidf.h: int tdsh_time_sync_now(void);
+tdsh_espidf.h: bool tdsh_ssh_is_running(uint16_t *port, int *clients);
+tdsh_espidf.h: int tdsh_ssh_set_running(bool on);
+tdsh_espidf.h: bool tdsh_ftp_is_running(uint16_t *port);
+tdsh_espidf.h: int tdsh_ftp_set_running(bool on);
+tdsh_espidf.h: bool tdsh_break_requested(void);
+tdsh_espidf.h: int tdsh_getchar(void);
+tdsh_permissions.h: #define TDSH_RIGHT_USERS (1u << 0)
+tdsh_permissions.h: #define TDSH_RIGHT_SYSTEM (1u << 1)
+tdsh_permissions.h: #define TDSH_RIGHT_NETWORK (1u << 2)
+tdsh_permissions.h: #define TDSH_RIGHT_HARDWARE (1u << 3)
+tdsh_permissions.h: #define TDSH_RIGHT_SHARED (1u << 4)
+tdsh_permissions.h: #define TDSH_RIGHT_TIME (1u << 5)
+tdsh_permissions.h: #define TDSH_RIGHT_APPS (1u << 6)
+tdsh_permissions.h: #define TDSH_RIGHT_ALL 127u
+tdsh_permissions.h: #define TDSH_RIGHTS_USER TDSH_RIGHT_APPS
+tdsh_permissions.h: #define TDSH_RIGHTS_ADMIN (TDSH_RIGHT_ALL & ~TDSH_RIGHT_HARDWARE)
+tdsh_permissions.h: typedef enum { TDSH_ROLE_USER = 0, TDSH_ROLE_ADMIN = 1, TDSH_ROLE_ROOT = 2 } tdsh_role_t;
+tdsh_permissions.h: struct tdsh_session;
+tdsh_permissions.h: bool tdsh_session_valid(const struct tdsh_session *session);
+tdsh_permissions.h: tdsh_role_t tdsh_session_role(const struct tdsh_session *session);
+tdsh_permissions.h: uint32_t tdsh_session_rights(const struct tdsh_session *session);
+tdsh_permissions.h: bool tdsh_session_has_right(const struct tdsh_session *session, uint32_t right);
+tdsh_platform.h: #define TDSH_MEM_8 (1u << 0)
+tdsh_platform.h: #define TDSH_MEM_16 (1u << 1)
+tdsh_platform.h: #define TDSH_MEM_32 (1u << 2)
+tdsh_platform.h: #define TDSH_MEM_READONLY (1u << 3)
+tdsh_platform.h: typedef int (*tdsh_worker_fn_t)(void *arg);
+tdsh_platform.h: typedef void (*tdsh_worker_cleanup_fn_t)(void *arg);
+tdsh_platform.h: typedef struct { const char *name; uintptr_t start; size_t size; uint32_t flags; } tdsh_mem_region_t;
+tdsh_platform.h: typedef struct tdsh_platform_api { const char *name; void *context; uint64_t (*monotonic_ms)(void *context); void (*sleep_ms)(void *context, uint32_t ms); void (*yield)(void *context); int (*random_bytes)(void *context, void *buffer, size_t length); void *(*malloc_fn)(void *context, size_t size); void *(*calloc_fn)(void *context, size_t count, size_t size); void *(*realloc_fn)(void *context, void *ptr, size_t size); void (*free_fn)(void *context, void *ptr); int (*worker_run)(void *context, const char *name, size_t stack_bytes, int priority, bool background, tdsh_worker_fn_t worker, void *arg, tdsh_worker_cleanup_fn_t cleanup, int *result_out); const tdsh_mem_region_t *(*mem_regions)(void *context, size_t *count); } tdsh_platform_api_t;
+tdsh_platform_win.h: int tdsh_win_init(const char *fs_root, const char *hostname);
+tdsh_platform_win.h: int tdsh_win_init_user(const char *fs_root, const char *hostname, const char *user);
+tdsh_platform_win.h: int tdsh_win_run_interactive(tdsh_session_t *session);
+tdsh_platform_win.h: void tdsh_console_raw_mode(bool on);
+tdsh_platform_win.h: bool tdsh_break_requested(void);
+tdsh_platform_win.h: int tdsh_getchar(void);
+tdsh_platform_win.h: int tdsh_win_register_commands(void);
+tdsh_posix.h: #define TDSH_POSIX_CONFIG_DEFAULT() { .hostname = "localhost", .default_user = NULL, .fs_root = NULL, .host_home = NULL, .map_default_user_home_to_host_home = false, .register_core_builtins = true, .register_posix_commands = true, }
+tdsh_posix.h: typedef struct { const char *hostname; const char *default_user; const char *fs_root; const char *host_home; bool map_default_user_home_to_host_home; bool register_core_builtins; bool register_posix_commands; } tdsh_posix_config_t;
+tdsh_posix.h: int tdsh_posix_init(const tdsh_posix_config_t *config);
+tdsh_posix.h: int tdsh_posix_run_interactive(void);
+tdsh_posix.h: int tdsh_posix_register_commands(void);
+tdsh_posix.h: void tdsh_console_raw_mode(bool on);
+tdsh_posix.h: bool tdsh_break_requested(void);
+tdsh_posix.h: int tdsh_getchar(void);
+tdsh_posix.h: const char *tdsh_posix_real_fs_root(void);
+tdsh_posix.h: const tdsh_platform_api_t *tdsh_posix_platform(void);
+tdsh_terminal.h: typedef struct { void *context; int (*read_byte)(void *context, uint8_t *byte_out); int (*write_bytes)(void *context, const void *data, size_t length); int (*columns)(void *context); int (*read_byte_timeout)(void *context, uint8_t *byte_out, unsigned timeout_ms); } tdsh_terminal_io_t;
+tdsh_terminal.h: int tdsh_terminal_readline(tdsh_session_t *session, const tdsh_terminal_io_t *io, const char *prompt, char *buffer, size_t capacity);

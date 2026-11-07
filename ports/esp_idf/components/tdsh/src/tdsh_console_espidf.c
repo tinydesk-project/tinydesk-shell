@@ -1,4 +1,4 @@
-#include "tdsh_espidf.h"
+#include "tdsh_espidf_internal.h"
 #include "tdsh_terminal.h"
 #include "tdsh_board.h"
 #include "tdsh_console_access.h"

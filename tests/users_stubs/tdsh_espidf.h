@@ -11,6 +11,8 @@
 #define TDSH_FACTORY_ROOT_PASSWORD "TestFactoryOnly"
 #define TDSH_FACTORY_HINT          "Type: " TDSH_FACTORY_ROOT_PASSWORD
 #define TDSH_STARTUP_FILE          ".tdshrc.tdsh"
+/* src/tdsh_espidf_internal.h names the configuration type. */
+typedef struct tdsh_espidf_config_stub tdsh_espidf_config_t;
 typedef struct
 {
     char name[TDSH_USERNAME_MAX];

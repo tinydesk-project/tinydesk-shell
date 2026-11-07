@@ -16,7 +16,7 @@
  *   not considered a PASS.  Transmitted data must be received and verified.
  */
 
-#include "tdsh_espidf.h"
+#include "tdsh_espidf_internal.h"
 #include "sdkconfig.h"
 
 

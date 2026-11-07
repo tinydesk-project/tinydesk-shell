@@ -8,7 +8,7 @@
  * files. While it is mounted an empty LittleFS directory /fs/sd lets a
  * listing of / show it. Nothing is formatted unless `sd format --yes` asks.
  */
-#include "tdsh_espidf.h"
+#include "tdsh_espidf_internal.h"
 #include "tdsh_board.h"
 
 #include <errno.h>

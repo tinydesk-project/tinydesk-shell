@@ -1,4 +1,4 @@
-#include "tdsh_espidf.h"
+#include "tdsh_espidf_internal.h"
 
 #include <stdbool.h>
 #include <stdio.h>
