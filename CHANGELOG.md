@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+* **MicroPython (moved from TinyDesk):** the `py` command and its port
+  (`python/`: heap and stack, files through the shell's paths and rights,
+  `machine` with Pin, ADC, PWM, I2C, SPI, UART and bitstream, frozen
+  `asyncio` and `neopixel`) with the MicroPython 1.29.0 interpreter in
+  `third_party/micropython` and the generated tables in `python/gen`.
+  Applications add modules of their own: `tools/micropython/gen.sh` takes
+  their sources, qstrs and manifest (`EXT_C`, `MANIFEST`, `OUT`), the PC
+  builds call `tdsh_add_python()` (`python/tdsh_python.cmake`) and ESP-IDF
+  projects replace the `micropython` component with one calling
+  `tdsh_micropython_component()`; `td_py_add_cleanup()` and
+  `HELP_EXTERNAL` let them release what a script left and describe their
+  modules in `help()`. The generator also runs on Windows (Git Bash with
+  MinGW-w64). See `python/README.md`. The shell's own firmware does not
+  register `py` yet (it needs a Ctrl+C check for its consoles).
+
 * **Password hints (ESP-IDF port):** `useradd` and `passwd` ask for an
   optional hint after the password; one that contains the password is
   refused. `tdsh_user_hint_get()`, `tdsh_user_hint_set()` and
