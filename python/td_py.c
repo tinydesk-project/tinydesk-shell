@@ -87,6 +87,7 @@ const char td_py_help_text[] =
     "Network: network (status), socket, ssl, requests (HTTP), umqtt.simple /\n"
     "umqtt.robust (MQTT), "
     "websocket (blocking client), aiohttp (asyncio HTTP and WebSocket).\n"
+    "Shell: tdsh.shell('ls -l') runs a shell command and returns its status.\n"
     "Files: open(), os.listdir() etc. use the shell's paths (/home/root, ...).\n"
     "\n"
     "help('modules') lists the modules; help(obj) shows an object's members.\n";

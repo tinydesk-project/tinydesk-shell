@@ -32,6 +32,7 @@ macro(tdsh_micropython_component)
         "${py_dir}/td_py_machine.c"
         "${py_dir}/td_py_vfs.c"
         "${py_dir}/td_py_socket.c"
+        "${py_dir}/td_py_tdsh.c"
         "${py_dir}/td_py_tls_ca.c"
         "${py_dir}/hw/td_py_hw_esp.c"   # machine: the chip's drivers
         "${py_dir}/hw/td_py_hw_pins.c"

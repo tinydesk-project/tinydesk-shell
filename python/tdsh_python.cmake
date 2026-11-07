@@ -31,6 +31,7 @@ function(tdsh_add_python)
         ${TDSH_PY_DIR}/td_py_machine.c
         ${TDSH_PY_DIR}/td_py_vfs.c
         ${TDSH_PY_DIR}/td_py_socket.c
+        ${TDSH_PY_DIR}/td_py_tdsh.c
         ${TDSH_PY_DIR}/td_py_tls_ca.c
         ${TDSH_PY_DIR}/hw/td_py_hw_host.c   # machine: no hardware on a PC
     )

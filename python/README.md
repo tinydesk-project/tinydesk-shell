@@ -8,6 +8,7 @@ the shell's paths and rights; Ctrl+C stops a script; `machine` and
 | Where | What |
 | --- | --- |
 | `python/td_py.c` | the `py` command: heap, stack, running a file, `-c` or the prompt, Ctrl+C, help |
+| `python/td_py_tdsh.c` | `tdsh`: `shell(line)` runs a shell command line in the script's session (its user's rights, the script's directory) and returns the exit status; `version()`. Applications can offer `shell()` in their own module (`td_py_tdsh.h`) |
 | `python/td_py_vfs.c` | files: `open()`, `os` through the shell's paths and rights |
 | `python/td_py_socket.c` | `network` (status) and `socket`: BSD sockets over the network the shell set up (lwIP, or the PC's) |
 | `python/td_py_tls_ca.c` | the CAs `ssl`/`tls` trust by default (the firmware's bundle, the PC's roots) |
