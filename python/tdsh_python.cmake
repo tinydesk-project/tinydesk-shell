@@ -53,7 +53,11 @@ function(tdsh_add_python)
         target_compile_definitions(${P_NAME} PRIVATE TD_PY_APP_HELP)   # the application's td_py_help_text
     endif()
     set_target_properties(${P_NAME} PROPERTIES C_STANDARD 11 C_EXTENSIONS ON)
-    set_source_files_properties(${TDSH_MICROPYTHON_SRCS} ${frozen} PROPERTIES COMPILE_OPTIONS -w)   # third-party code
+    # Third-party code: no warnings. Not instrumented by sanitizers either:
+    # MicroPython's garbage collector scans the C stack conservatively, which
+    # AddressSanitizer reports as bad reads (MicroPython's own sanitizer builds
+    # leave it out the same way). The shell's and the port's code stay checked.
+    set_source_files_properties(${TDSH_MICROPYTHON_SRCS} ${frozen} PROPERTIES COMPILE_OPTIONS "-w;-fno-sanitize=all")
     # vfs_posix_file.c also defines sys.stdin/stdout/stderr on file
     # descriptors 0-2 (the process's console, the UART on a board). Rename
     # them, so sys_stdio_mphal.c's, which go through the shell session, are
