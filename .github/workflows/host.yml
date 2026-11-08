@@ -36,7 +36,9 @@ jobs:
         run: cmake --build build-asan --parallel
       - name: Test
         env:
-          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          # detect_stack_use_after_return=0: py takes a local variable's address as
+          # the top of its stack (td_py.c), which the fake stack would move.
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:detect_stack_use_after_return=0
           UBSAN_OPTIONS: halt_on_error=1
         run: ctest --test-dir build-asan --output-on-failure
 
