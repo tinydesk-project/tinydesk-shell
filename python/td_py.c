@@ -44,6 +44,7 @@
 
 #if defined(ESP_PLATFORM)
 #include "esp_heap_caps.h"
+#include "tdsh_espidf.h"   /* tdsh_wifi_get_info, tdsh_eth_get_info: the reserve */
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -54,11 +55,16 @@
 
 /* Default heap sizes. With PSRAM (ESP32-WROVER, ESP32-S3) the heap goes
  * there and can be large; without it (ESP32-C6, 4 MB ESP32) it comes out
- * of internal RAM, and RAM_RESERVE is left for Wi-Fi, SSH and the desktop. */
+ * of internal RAM, and a reserve is left for the system. The reserve
+ * follows the network: before Wi-Fi or Ethernet is up it must leave room to
+ * start it (a scan, the driver's buffers); once it is up those buffers are
+ * taken and a smaller reserve keeps it running. A 4 MB ESP32 then has a
+ * small heap either way; the ESP32-C6 has its full 64 KB. */
 #define HEAP_PSRAM_KB  512
 #define HEAP_RAM_KB    64
 #define HEAP_MIN_KB    16
-#define RAM_RESERVE_KB 32
+#define RESERVE_NET_OFF_KB 48
+#define RESERVE_NET_ON_KB  20
 #define HEAP_PC_KB     1024
 
 /* Stack the interpreter leaves free below its frames for C code it calls
@@ -332,7 +338,12 @@ static void *heap_alloc(size_t want_kb, size_t *size)
     size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     size_t total = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     size_t n = (want_kb ? want_kb : HEAP_RAM_KB) * 1024u;
-    size_t room = total > RAM_RESERVE_KB * 1024u ? total - RAM_RESERVE_KB * 1024u : 0;
+    tdsh_wifi_info_t wifi;
+    tdsh_eth_info_t eth;
+    bool net_up = (tdsh_wifi_get_info(&wifi) == 0 && wifi.initialized) ||
+                  (tdsh_eth_get_info(&eth) == 0 && eth.initialized);
+    const unsigned reserve_kb = net_up ? RESERVE_NET_ON_KB : RESERVE_NET_OFF_KB;
+    size_t room = total > reserve_kb * 1024u ? total - reserve_kb * 1024u : 0;
     if (n > room)
         n = room;
     if (n > largest)
@@ -340,8 +351,9 @@ static void *heap_alloc(size_t want_kb, size_t *size)
     if (n < HEAP_MIN_KB * 1024u)
     {
         printf("py: not enough RAM: %u KB free (largest block %u KB); Python needs %u KB and leaves %u KB "
-               "for the system\n",
-               (unsigned)(total / 1024), (unsigned)(largest / 1024), HEAP_MIN_KB, RAM_RESERVE_KB);
+               "for the system%s\n",
+               (unsigned)(total / 1024), (unsigned)(largest / 1024), HEAP_MIN_KB, reserve_kb,
+               net_up ? "" : " (room to start Wi-Fi)");
         return NULL;
     }
     *size = n & ~(size_t)15;

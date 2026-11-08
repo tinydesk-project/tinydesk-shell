@@ -28,6 +28,10 @@ MINGW* | MSYS*)
     native="PYTHON=python MPY_CROSS=$top/mpy-cross/build/mpy-cross.exe"
     ;;
 esac
+# The same output on every run: the "build date" in mpversion.h (and the
+# py banner) is the MicroPython checkout's commit date, not today's.
+SOURCE_DATE_EPOCH=$(git -C "$top" log -1 --format=%ct 2>/dev/null || date -u +%s)
+export SOURCE_DATE_EPOCH
 make clean MICROPYTHON_TOP="$top" $native "$@" >/dev/null
 make MICROPYTHON_TOP="$top" $native "$@"
 # One line ending in the generated files, whichever system made them.

@@ -3,6 +3,21 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  generated:
+    # python/gen must match its sources: regenerate it and compare.
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.3.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: The generated MicroPython tables are current
+        shell: bash
+        run: |
+          git config --global --add safe.directory '*'
+          command -v gcc >/dev/null || (apt-get update && apt-get install -y build-essential)
+          git clone --depth 1 --branch v1.29.0 https://github.com/micropython/micropython.git /tmp/mp
+          git -C /tmp/mp submodule update --init lib/micropython-lib
+          tools/micropython/gen.sh /tmp/mp
+          git diff --stat --exit-code -- python/gen
   build:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.3.1

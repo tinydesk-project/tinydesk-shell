@@ -39,7 +39,10 @@ tools/micropython/gen.sh ../mp INTERPRETER=1        # and third_party/micropytho
 the way its `ports/embed` does it). The first run also builds `mpy-cross`
 in the checkout, which compiles the frozen modules; the same `mpy-cross`
 makes `.mpy` files for `py`. The output has LF line endings and the same
-content on every system. Commit it with the change that needed it.
+content on every system and every day: the build date in `mpversion.h` (and
+the `py` banner) is the MicroPython checkout's commit date
+(`SOURCE_DATE_EPOCH`). CI regenerates the tables and fails if they differ
+from the committed ones, so commit them with every change that needs them. Commit it with the change that needed it.
 
 The preprocessor here runs without the build's platform macros (it defines
 `TD_PY_GENHDR`), so code inside `#ifdef ESP_PLATFORM` or `#ifdef _WIN32`
