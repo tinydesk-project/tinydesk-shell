@@ -1,5 +1,6 @@
 /* Execute the production ESP account store against in-memory NVS and real
  * SHA-256: migration, rights escalation, remember proofs and failed writes. */
+#undef NDEBUG /* the checks are asserts: keep them in Release builds */
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

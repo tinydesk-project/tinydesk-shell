@@ -1,4 +1,5 @@
 #include "tdsh.h"
+#undef NDEBUG /* the checks are asserts: keep them in Release builds */
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
