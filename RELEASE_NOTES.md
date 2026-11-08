@@ -7,18 +7,24 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
-## New in 0.2.0
+## New in 0.3.0
 
-* **ESP32-S3:** `tinydesk-shell-{version}-esp32s3-factory.bin` runs on any
-  ESP32-S3 with 4 MB flash or more, on its USB-UART port (UART0) at
-  115200 baud, with the same flash layout as the ESP32 image (2.5 MB
-  application, 1.4 MB `/fs`). Octal PSRAM is used when the module has it
-  (N16R8, N8R8).
-* **`peek` and `poke` on the ESP32-S3:** internal SRAM, RTC slow RAM, the
-  mask ROM and the GPIO, IO_MUX and eFuse registers; `poke` writes the
-  GPIO output registers, as on the ESP32 and the ESP32-C6.
+* **`py`, MicroPython, in the shell itself** (#6): scripts, the prompt,
+  files with the shell's paths and rights, `machine` (pins and buses, for
+  root), `asyncio`, Ctrl+C on the serial/USB console, over SSH and in the
+  PC programs.
+* **Network in Python:** `socket`, `ssl` (TLS 1.2 with certificate
+  checks: the firmware's CA bundle, or the PC's roots), `requests`,
+  `umqtt`, `websocket`, `aiohttp`, and `network` for the connection's state.
+* **Packages and virtual environments:** `upip install | uninstall | list
+  | freeze`, `venv`, `activate`, `deactivate`, `venvs` (from ushell).
+* **`tdsh.shell()`** runs a shell command from Python.
+* **API stability:** `STABILITY.md`; the public C API, the Python modules
+  and the board keys are recorded and checked by the tests; internal
+  declarations moved to `tdsh_espidf_internal.h`. `TDSH_VERSION_MAJOR`,
+  `_MINOR`, `_PATCH`.
 
-Also since 0.1.0: nano with UTF-8 text, `peek` and `poke` on the ESP32
+Earlier: the ESP32-S3 image and `peek`/`poke` on it (0.2.0); nano with UTF-8 text, `peek` and `poke` on the ESP32
 and the ESP32-C6, script memory limits for small boards and a message
 when a script runs out of memory, and builds on macOS (0.1.6); only root
 changes the network policy, and board configuration numbers are decimal

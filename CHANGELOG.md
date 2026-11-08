@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
+* **Flash layout on the ESP32 and ESP32-S3 (`projects/esp32`,
+  `projects/esp32s3`):** a 3 MB app and a 960 KB `/fs` at `0x310000`,
+  TinyDesk's 4 MB ESP32 layout, so a 4 MB board switches editions and
+  keeps its files (0.2.0's 2.5 MB + 1.4 MB layout no longer matched).
+  Meant to stay for 1.x; moving to it needs an erase.
 * **Packages and virtual environments (from ushell):** `venv DIR`,
   `activate DIR`, `deactivate`, `venvs` (`src/core/tdsh_venv.c`, every
   port; the active one is the session variable `VIRTUAL_ENV` and the prompt

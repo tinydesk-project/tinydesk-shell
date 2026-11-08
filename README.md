@@ -106,7 +106,8 @@ reboot
 
 > The partition tables: ESP32-C6: application at `0x10000` (3 MB), LittleFS
 `storage` at `0x310000`; classic ESP32 and ESP32-S3: application at
-`0x10000` (2.5 MB), LittleFS at `0x290000` (1.4 MB). The file system is formatted if it cannot be
+`0x10000` (3 MB), LittleFS at `0x310000` (960 KB), the same as TinyDesk's
+4 MB ESP32, so a 4 MB board keeps its files when it switches editions. The file system is formatted if it cannot be
 mounted. Do not use `erase-flash` as a routine step.
 
 ## Embed it in your ESP-IDF application

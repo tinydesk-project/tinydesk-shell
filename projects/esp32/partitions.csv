@@ -1,8 +1,9 @@
-# TinyDesk Shell for the classic ESP32 (4 MB flash): one 2.5 MB app, 1.4 MB
-# LittleFS /fs. The same layout as TinyDesk's ESP32 4 MB desktop firmware,
-# so a board can switch between the two editions and keep its files.
+# TinyDesk Shell for the classic ESP32 (4 MB flash or more): one 3 MB app,
+# 960 KB LittleFS /fs. The same layout as TinyDesk's ESP32 4 MB desktop
+# firmware, so a 4 MB board can switch between the two editions and keep its
+# files (since 0.3.0; meant to stay).
 # Name,     Type, SubType,  Offset,   Size,
 nvs,        data, nvs,      0x9000,   0x6000,
 phy_init,   data, phy,      0xF000,   0x1000,
-factory,    app,  factory,  0x10000,  0x280000,
-storage,    data, littlefs, 0x290000, 0x170000,
+factory,    app,  factory,  0x10000,  0x300000,
+storage,    data, littlefs, 0x310000, 0xF0000,
