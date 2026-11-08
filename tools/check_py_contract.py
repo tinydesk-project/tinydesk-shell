@@ -42,7 +42,11 @@ def collect(program):
         if line.startswith("JSON:"):
             return json.loads(line[5:])
     print(out[-2000:])
-    raise SystemExit("py did not answer (see the output above)")
+    err = res.stderr.decode("utf-8", "replace")
+    if err.strip():
+        print("--- error output:")
+        print(err[-4000:])
+    raise SystemExit("py did not answer (exit status %d; see the output above)" % res.returncode)
 
 
 def main(argv):
