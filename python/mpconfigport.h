@@ -117,15 +117,15 @@ extern void td_hw_atomic_end(uint32_t state);
 #define MICROPY_PY_HASHLIB        (1)
 #define MICROPY_PY_HASHLIB_SHA256 (1)
 #if defined(ESP_PLATFORM) || defined(TD_PY_MBEDTLS) || defined(TD_PY_GENHDR)
-#define MICROPY_SSL_MBEDTLS     (1)
-#define MICROPY_PY_SSL          (1)   /* ssl: TLS over a socket (extmod/modtls_mbedtls.c) */
+#define MICROPY_SSL_MBEDTLS (1)
+#define MICROPY_PY_SSL      (1)   /* ssl: TLS over a socket (extmod/modtls_mbedtls.c) */
 /* The CAs a new SSLContext trusts: the firmware's bundle, the PC's roots
  * (td_py_tls_ca.c). */
 struct mbedtls_ssl_config;
 void td_py_ssl_default_ca(struct mbedtls_ssl_config *conf);
 #define MICROPY_PY_SSL_DEFAULT_CA(conf) td_py_ssl_default_ca(conf)
-#define MICROPY_PY_HASHLIB_SHA1 (1)
-#define MICROPY_PY_HASHLIB_MD5  (1)
+#define MICROPY_PY_HASHLIB_SHA1         (1)
+#define MICROPY_PY_HASHLIB_MD5          (1)
 #else
 #define MICROPY_PY_HASHLIB_SHA1 (0)
 #define MICROPY_PY_HASHLIB_MD5  (0)
@@ -164,9 +164,9 @@ extern void *td_py_commit_exec(void *buf, size_t len, void *reloc);
 /* The product in the banner and sys.implementation._machine: an
  * application names itself with TD_PY_BOARD_NAME (the builds' BOARD_NAME). */
 #ifdef TD_PY_BOARD_NAME
-#define MICROPY_HW_BOARD_NAME                    TD_PY_BOARD_NAME
+#define MICROPY_HW_BOARD_NAME TD_PY_BOARD_NAME
 #else
-#define MICROPY_HW_BOARD_NAME                    "TinyDesk Shell"
+#define MICROPY_HW_BOARD_NAME "TinyDesk Shell"
 #endif
 /* A string literal (the banner pastes it): the chip TinyDesk runs on. */
 #if defined(TD_PY_ESP32S3)

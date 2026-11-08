@@ -3,6 +3,11 @@
 # certificate against the trusted CAs, as in CPython (the original turns
 # the check off). wrap_socket() keeps MicroPython's default, CERT_NONE.
 import tls
+
+if not hasattr(tls, "SSLContext"):
+    # A PC program built without mbedTLS: sockets work, TLS does not.
+    raise ImportError("no TLS in this build (built without mbedTLS)")
+
 from tls import *
 
 

@@ -12,12 +12,12 @@
 extern "C" {
 #endif
 
-#define TDSH_VERSION    "0.3.0"
+#define TDSH_VERSION       "0.3.0"
 /* The same as numbers, for #if (tools/check_api.py checks they agree). */
 #define TDSH_VERSION_MAJOR 0
 #define TDSH_VERSION_MINOR 3
 #define TDSH_VERSION_PATCH 0
-#define USCRIPT_VERSION "1.1.1"
+#define USCRIPT_VERSION    "1.1.1"
 
 #define TDSH_MAX_LINE      512
 #define TDSH_MAX_ARGS      48

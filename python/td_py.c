@@ -60,12 +60,12 @@
  * start it (a scan, the driver's buffers); once it is up those buffers are
  * taken and a smaller reserve keeps it running. A 4 MB ESP32 then has a
  * small heap either way; the ESP32-C6 has its full 64 KB. */
-#define HEAP_PSRAM_KB  512
-#define HEAP_RAM_KB    64
-#define HEAP_MIN_KB    16
+#define HEAP_PSRAM_KB      512
+#define HEAP_RAM_KB        64
+#define HEAP_MIN_KB        16
 #define RESERVE_NET_OFF_KB 48
 #define RESERVE_NET_ON_KB  20
-#define HEAP_PC_KB     1024
+#define HEAP_PC_KB         1024
 
 /* Stack the interpreter leaves free below its frames for C code it calls
  * (file system, printf, MQTT/TLS from the tinydesk module). */

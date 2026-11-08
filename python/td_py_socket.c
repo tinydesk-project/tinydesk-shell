@@ -29,7 +29,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 typedef SOCKET td_sock_t;
-#define TD_BAD_SOCK INVALID_SOCKET
+#define TD_BAD_SOCK    INVALID_SOCKET
 #define td_closesocket closesocket
 #else
 #include <fcntl.h>
@@ -41,7 +41,7 @@ typedef SOCKET td_sock_t;
 #include <sys/socket.h>
 #include <unistd.h>
 typedef int td_sock_t;
-#define TD_BAD_SOCK (-1)
+#define TD_BAD_SOCK    (-1)
 #define td_closesocket close
 #endif
 #if defined(ESP_PLATFORM)
@@ -70,19 +70,32 @@ static int sock_errno(bool connecting)
     int e = WSAGetLastError();
     switch (e)
     {
-    case WSAEWOULDBLOCK: return connecting ? MP_EINPROGRESS : MP_EAGAIN;
-    case WSAEINPROGRESS: return MP_EINPROGRESS;
-    case WSAEALREADY: return MP_EALREADY;
-    case WSAECONNREFUSED: return MP_ECONNREFUSED;
-    case WSAECONNRESET: return MP_ECONNRESET;
-    case WSAECONNABORTED: return MP_ECONNABORTED;
-    case WSAETIMEDOUT: return MP_ETIMEDOUT;
-    case WSAEHOSTUNREACH: return MP_EHOSTUNREACH;
-    case WSAENOTCONN: return MP_ENOTCONN;
-    case WSAEADDRINUSE: return MP_EADDRINUSE;
-    case WSAEISCONN: return MP_EISCONN;
-    case WSAEINVAL: return MP_EINVAL;
-    default: return MP_EIO;
+    case WSAEWOULDBLOCK:
+        return connecting ? MP_EINPROGRESS : MP_EAGAIN;
+    case WSAEINPROGRESS:
+        return MP_EINPROGRESS;
+    case WSAEALREADY:
+        return MP_EALREADY;
+    case WSAECONNREFUSED:
+        return MP_ECONNREFUSED;
+    case WSAECONNRESET:
+        return MP_ECONNRESET;
+    case WSAECONNABORTED:
+        return MP_ECONNABORTED;
+    case WSAETIMEDOUT:
+        return MP_ETIMEDOUT;
+    case WSAEHOSTUNREACH:
+        return MP_EHOSTUNREACH;
+    case WSAENOTCONN:
+        return MP_ENOTCONN;
+    case WSAEADDRINUSE:
+        return MP_EADDRINUSE;
+    case WSAEISCONN:
+        return MP_EISCONN;
+    case WSAEINVAL:
+        return MP_EINVAL;
+    default:
+        return MP_EIO;
     }
 #else
     int e = errno;
@@ -695,19 +708,19 @@ static mp_obj_t td_getaddrinfo(size_t n_args, const mp_obj_t *args)
     /* IPv4 first: socket() makes an AF_INET socket by default, and scripts
      * (umqtt, requests) connect to the first address. */
     for (int pass = 0; pass < 2; pass++)
-    for (struct addrinfo *ai = res; ai; ai = ai->ai_next)
-    {
-        if ((ai->ai_family == AF_INET) != (pass == 0))
-            continue;
-        mp_obj_t items[5] = {
-            MP_OBJ_NEW_SMALL_INT(ai->ai_family),
-            MP_OBJ_NEW_SMALL_INT(ai->ai_socktype),
-            MP_OBJ_NEW_SMALL_INT(ai->ai_protocol),
-            MP_OBJ_NEW_QSTR(MP_QSTR_),
-            sockaddr_to_tuple(ai->ai_addr),
-        };
-        mp_obj_list_append(list, mp_obj_new_tuple(5, items));
-    }
+        for (struct addrinfo *ai = res; ai; ai = ai->ai_next)
+        {
+            if ((ai->ai_family == AF_INET) != (pass == 0))
+                continue;
+            mp_obj_t items[5] = {
+                MP_OBJ_NEW_SMALL_INT(ai->ai_family),
+                MP_OBJ_NEW_SMALL_INT(ai->ai_socktype),
+                MP_OBJ_NEW_SMALL_INT(ai->ai_protocol),
+                MP_OBJ_NEW_QSTR(MP_QSTR_),
+                sockaddr_to_tuple(ai->ai_addr),
+            };
+            mp_obj_list_append(list, mp_obj_new_tuple(5, items));
+        }
     freeaddrinfo(res);
     return list;
 }

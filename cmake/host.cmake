@@ -130,7 +130,7 @@ if(WIN32)
         tdsh_python_tls()
         target_link_libraries(tdsh_host PRIVATE tdsh_python)
         # py's modules against python/py_contract.json (STABILITY.md).
-        if(TDSH_BUILD_TESTS AND Python3_FOUND)
+        if(TDSH_BUILD_TESTS AND Python3_FOUND AND TDSH_MBEDTLS_DIR)   # the contract has ssl
             add_test(NAME tdsh_py_contract
                      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_py_contract.py
                              $<TARGET_FILE:tdsh_host>)
@@ -202,7 +202,7 @@ if(TDSH_BUILD_POSIX)
         tdsh_python_tls()
         target_link_libraries(tdsh_host PRIVATE tdsh_python)
         # py's modules against python/py_contract.json (STABILITY.md).
-        if(TDSH_BUILD_TESTS AND Python3_FOUND)
+        if(TDSH_BUILD_TESTS AND Python3_FOUND AND TDSH_MBEDTLS_DIR)   # the contract has ssl
             add_test(NAME tdsh_py_contract
                      COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_py_contract.py
                              $<TARGET_FILE:tdsh_host>)

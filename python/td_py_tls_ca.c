@@ -74,7 +74,7 @@ static void load_roots(void)
 
 void td_py_ssl_default_ca(mbedtls_ssl_config *conf)
 {
-    /* TLS 1.2, as on the boards (ESP-IDF's mbedTLS configuration): the PC
+     /* TLS 1.2, as on the boards (ESP-IDF's mbedTLS configuration): the PC
      * build's TLS 1.3 handshake fails in mbedTLS ("internal error"). */
     mbedtls_ssl_conf_max_tls_version(conf, MBEDTLS_SSL_VERSION_TLS1_2);
     if (!s_loaded)
