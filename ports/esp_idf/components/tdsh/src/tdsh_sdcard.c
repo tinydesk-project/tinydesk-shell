@@ -7,6 +7,15 @@
  * maps to it, so the shell, nano, FTP and (for root) SFTP all see the same
  * files. While it is mounted an empty LittleFS directory /fs/sd lets a
  * listing of / show it. Nothing is formatted unless `sd format --yes` asks.
+ *
+ * Hot-plug (sd.automount, default 1 when the pins are set): a watcher task
+ * mounts a card when one is inserted and unmounts it when it is pulled,
+ * from the card-detect switch when the board has one (sd.cd, its level
+ * with a card in sd.cd_level), else by asking the card every 2 s while it
+ * is mounted and trying a mount every 5 s while it is not. `sd unmount`
+ * stops that until the card is taken out (with sd.cd) or `sd mount`. A
+ * mounted card gets the folder /sd/TinyDesk (TinyDesk's apps and caches);
+ * the rest of the card is the user's. Listeners hear every change.
  */
 #include "tdsh_espidf_internal.h"
 #include "tdsh_board.h"
@@ -18,6 +27,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "driver/gpio.h"
 #include "driver/sdspi_host.h"
 #include "driver/spi_common.h"
 #include "esp_log.h"
@@ -30,6 +40,10 @@
 #define SD_PLACEHOLDER TDSH_MOUNT_POINT "/sd"
 #define SD_MAX_KHZ     10000
 #define SD_MAX_FILES   5
+#define SD_HOME        SD_VFS "/TinyDesk"
+#define WATCH_MS       2000
+#define RETRY_MS       5000
+#define MAX_LISTENERS  4
 
 static const char *TAG = "tdsh-sd";
 
@@ -40,6 +54,42 @@ typedef struct
 
 static sdmmc_card_t *s_card;
 static SemaphoreHandle_t s_lock;
+static bool s_held_off;   /* `sd unmount`: no automatic mount for now */
+static struct
+{
+    void (*fn)(bool mounted, void *user);
+    void *user;
+} s_listeners[MAX_LISTENERS];
+
+static void tell(bool mounted)
+{
+    for (int i = 0; i < MAX_LISTENERS; i++)
+        if (s_listeners[i].fn)
+            s_listeners[i].fn(mounted, s_listeners[i].user);
+}
+
+void tdsh_sdcard_add_listener(void (*fn)(bool mounted, void *user), void *user)
+{
+    for (int i = 0; i < MAX_LISTENERS; i++)
+        if (!s_listeners[i].fn)
+        {
+            s_listeners[i].fn = fn;
+            s_listeners[i].user = user;
+            return;
+        }
+}
+
+int tdsh_sdcard_space(uint64_t *total, uint64_t *free_bytes)
+{
+    uint64_t t = 0, f = 0;
+    if (!s_card || esp_vfs_fat_info(SD_VFS, &t, &f) != ESP_OK)
+        return -1;
+    if (total)
+        *total = t;
+    if (free_bytes)
+        *free_bytes = f;
+    return 0;
+}
 
 static void load_pins(sd_pins_t *p)
 {
@@ -166,6 +216,7 @@ static esp_err_t mount_locked(bool format_if_unformatted)
     {
         ESP_LOGW(TAG, "could not create %s: errno %d", SD_PLACEHOLDER, errno);
     }
+    (void)mkdir(SD_HOME, 0755);   /* TinyDesk's apps and caches */
     ESP_LOGI(TAG, "SD card %s mounted at %s", s_card->cid.name, SD_VFS);
     return ESP_OK;
 }
@@ -185,17 +236,79 @@ static esp_err_t unmount_locked(void)
 esp_err_t tdsh_sdcard_mount(void)
 {
     lock();
+    bool was = s_card != NULL;
     esp_err_t err = mount_locked(false);
+    if (err == ESP_OK)
+        s_held_off = false;
     unlock();
+    if (err == ESP_OK && !was)
+        tell(true);
     return err;
 }
 
 esp_err_t tdsh_sdcard_unmount(void)
 {
     lock();
+    bool was = s_card != NULL;
     esp_err_t err = unmount_locked();
+    s_held_off = true;
     unlock();
+    if (was)
+        tell(false);
     return err;
+}
+
+/* ------------------------------------------------------------ hot-plug */
+
+static int s_cd = -1, s_cd_level;
+
+static bool card_present(void)
+{
+    return s_cd >= 0 && gpio_get_level((gpio_num_t)s_cd) == s_cd_level;
+}
+
+static void watch_task(void *arg)
+{
+    (void)arg;
+    int since_try = RETRY_MS;
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(WATCH_MS));
+        since_try += WATCH_MS;
+        bool changed = false, now_mounted = false;
+        lock();
+        if (s_card)
+        {
+            /* Pulled out: the switch says so, or the card stops answering. */
+            bool gone = s_cd >= 0 ? !card_present() : sdmmc_get_status(s_card) != ESP_OK;
+            if (gone)
+            {
+                ESP_LOGW(TAG, "SD card removed");
+                quiet_logs(true);
+                (void)esp_vfs_fat_sdcard_unmount(SD_VFS, s_card);
+                quiet_logs(false);
+                s_card = NULL;
+                (void)rmdir(SD_PLACEHOLDER);
+                changed = true;
+            }
+        }
+        else if (s_cd >= 0 && !card_present())
+        {
+            s_held_off = false;   /* taken out: the next card mounts again */
+        }
+        else if (!s_held_off && (s_cd >= 0 || since_try >= RETRY_MS))
+        {
+            since_try = 0;
+            if (mount_locked(false) == ESP_OK)
+            {
+                changed = true;
+                now_mounted = true;
+            }
+        }
+        unlock();
+        if (changed)
+            tell(now_mounted);
+    }
 }
 
 bool tdsh_sdcard_translate_logical(const char *logical, char *real_out, size_t real_out_size)
@@ -215,16 +328,27 @@ esp_err_t tdsh_sdcard_init(void)
         s_lock = xSemaphoreCreateMutex();
     /* A card left mounted by an earlier boot leaves its placeholder. */
     (void)rmdir(SD_PLACEHOLDER);
-    if (tdsh_board_int("sd.automount", 0) != 1)
+    bool configured = tdsh_sdcard_configured();
+    if (tdsh_board_int("sd.automount", configured ? 1 : 0) != 1)
         return ESP_OK;
-    if (!tdsh_sdcard_configured())
+    if (!configured)
     {
         ESP_LOGW(TAG, "sd.automount is set, but the SD pins are not configured");
         return ESP_ERR_NOT_SUPPORTED;
     }
-    esp_err_t err = tdsh_sdcard_mount();
-    if (err != ESP_OK)
-        ESP_LOGW(TAG, "SD card not mounted at boot: %s", esp_err_to_name(err));
+    s_cd = tdsh_board_int("sd.cd", -1);
+    s_cd_level = tdsh_board_int("sd.cd_level", 0);
+    if (s_cd >= 0)
+    {
+        gpio_config_t io = {.pin_bit_mask = 1ULL << s_cd, .mode = GPIO_MODE_INPUT, .pull_up_en = GPIO_PULLUP_ENABLE};
+        if (gpio_config(&io) != ESP_OK)
+            s_cd = -1;
+    }
+    esp_err_t err = s_cd < 0 || card_present() ? tdsh_sdcard_mount() : ESP_ERR_NOT_FOUND;
+    if (err == ESP_OK)
+        ESP_LOGI(TAG, "SD card mounted at boot");
+    s_held_off = false;   /* a failed mount at boot is not `sd unmount` */
+    xTaskCreate(watch_task, "tdsh_sd", 3072, NULL, 2, NULL);
     return err;
 }
 
@@ -252,8 +376,10 @@ static int cmd_status(void)
     printf("SD card:   %s\n", s_card ? "mounted at /sd" : "not mounted (sd mount)");
     printf("Pins:      SPI%d MISO %d MOSI %d SCLK %d CS %d, %d kHz\n",
            p.host + 1, p.miso, p.mosi, p.sclk, p.cs, SD_MAX_KHZ);
-    printf("At boot:   %s\n", tdsh_board_int("sd.automount", 0) == 1 ? "mounted (sd.automount = 1)"
-                                                                     : "not mounted (board set sd.automount 1)");
+    bool hotplug = tdsh_board_int("sd.automount", tdsh_sdcard_configured() ? 1 : 0) == 1;
+    printf("Hot-plug:  %s\n", !hotplug    ? "off (board set sd.automount 1)"
+                              : s_cd >= 0 ? "on, from the card-detect switch (sd.cd)"
+                                          : "on, the card is checked every few seconds");
     if (!s_card)
         return 0;
     printf("Card:      %s, %s\n", s_card->cid.name,

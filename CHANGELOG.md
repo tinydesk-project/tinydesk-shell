@@ -2,6 +2,16 @@
 
 ## Next release
 
+* **SD card hot-plug:** with `sd.automount` (now 1 by default wherever the
+  SD pins are set) a watcher mounts a card when it is inserted and unmounts
+  it when it is pulled out: from the card-detect switch (new keys `sd.cd`,
+  `sd.cd_level`) or by checking the card every 2 s (a mount is tried every
+  5 s without one). `sd unmount` stops it until the card is taken out or
+  `sd mount`. Every card gets `/sd/TinyDesk`. `tdsh_sdcard_add_listener()`,
+  `tdsh_sdcard_space()`. `sd` shows the hot-plug state.
+* **`/sd` is shared like `/shared`:** accounts with the Shared right may use
+  the card (FAT has no owners); paths cannot climb out of it.
+
 * **`wifiap`: the board's own Wi-Fi access point** (STA+AP) for Telnet, SSH
   and SFTP where there is no other network: `off`, `on`, or `auto` (up after
   20 s without a network, down a minute after one is back with no clients).

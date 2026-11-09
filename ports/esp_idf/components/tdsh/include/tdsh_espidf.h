@@ -253,6 +253,12 @@ esp_err_t tdsh_sdcard_unmount(void);
 bool tdsh_sdcard_configured(void);
 bool tdsh_sdcard_mounted(void);
 void *tdsh_sdcard_card(void);
+/* Hot-plug (sd.automount): fn(mounted, user) runs on the watcher's task
+ * after every mount and unmount (by the watcher, sd mount/unmount or the
+ * card pulled out); up to 4 listeners. Keep it short. */
+void tdsh_sdcard_add_listener(void (*fn)(bool mounted, void *user), void *user);
+/* The card's size and free space in bytes; -1 while it is not mounted. */
+int tdsh_sdcard_space(uint64_t *total, uint64_t *free_bytes);
 
 /* Time. Automatic (SNTP) time can be switched off; the choice is
  * kept in NVS (namespace "ush_time", key "auto", default on). While it is

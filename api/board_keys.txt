@@ -20,6 +20,8 @@ rs485.2.rx
 rs485.2.tx
 rs485.2.uart
 sd.automount
+sd.cd
+sd.cd_level
 sd.cs
 sd.miso
 sd.mosi

@@ -60,6 +60,18 @@ int main(void)
     assert(!strcmp(path, "/shared/root/pass"));
     assert(!tdsh_path_normalize(&user, "~/notes", path, sizeof(path)));
     assert(!strcmp(path, "/home/alice/notes"));
+    /* The SD card is shared like /shared: in it, out of it, never above it. */
+    assert(!tdsh_path_normalize(&user, "/sd/photos/a.ppm", path, sizeof(path)));
+    assert(!strcmp(path, "/sd/photos/a.ppm"));
+    snprintf(user.cwd, sizeof(user.cwd), "/sd/photos");
+    assert(!tdsh_path_normalize(&user, "../../root/pass", path, sizeof(path)));
+    assert(!strcmp(path, "/sd/root/pass"));
+    assert(!tdsh_path_normalize(&user, "/shared/a", path, sizeof(path)));
+    assert(!tdsh_path_normalize(&user, "/sdx", path, sizeof(path)));   /* not the card: */
+    assert(!strcmp(path, "/home/alice/sdx"));                          /* into the home */
+    snprintf(user.cwd, sizeof(user.cwd), "/shared");
+    shared_rights = TDSH_RIGHT_NETWORK;
+    assert(tdsh_path_normalize(&user, "/sd/a", path, sizeof(path)) == -EACCES);
     shared_rights = 0;
     assert(tdsh_path_normalize(&user, "file", path, sizeof(path)) == -EACCES);
     assert(tdsh_path_normalize(&user, "..\\..\\root", path, sizeof(path)) == -EINVAL);

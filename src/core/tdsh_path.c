@@ -81,6 +81,18 @@ static bool path_is_home_or_child(const char *path, const char *home)
            (strncmp(path, home, n) == 0 && path[n] == '/');
 }
 
+/* Trees every account with the Shared right may use besides its home:
+ * /shared, and /sd (the SD card, whose FAT has no owners). The tree path
+ * is in, or NULL. */
+static const char *shared_tree(const char *path)
+{
+    static const char *const trees[] = {"/shared", "/sd"};
+    for (size_t i = 0; i < sizeof(trees) / sizeof(trees[0]); ++i)
+        if (path_is_home_or_child(path, trees[i]))
+            return trees[i];
+    return NULL;
+}
+
 static bool targets_forbidden_tree(const tdsh_session_t *session,
                                    const char *input)
 {
@@ -143,12 +155,14 @@ int tdsh_path_normalize(tdsh_session_t *session,
     }
 
     bool shared = tdsh_session_has_right(session, TDSH_RIGHT_SHARED);
-    bool from_shared = shared && path_is_home_or_child(session->cwd, "/shared");
-    bool to_shared = path_is_home_or_child(input, "/shared");
-    if (to_shared && !shared)
+    const char *from_tree = shared ? shared_tree(session->cwd) : NULL;
+    const char *to_tree = input[0] == '/' ? shared_tree(input) : NULL;
+    if (to_tree && !shared)
         return -EACCES;
-    const char *jail = to_shared || (from_shared && input[0] != '/' && input[0] != '~') ? "/shared" : session->home;
-    if (!path_is_home_or_child(session->cwd, session->home) && !from_shared)
+    const char *jail = to_tree                                           ? to_tree
+                       : from_tree && input[0] != '/' && input[0] != '~' ? from_tree
+                                                                         : session->home;
+    if (!path_is_home_or_child(session->cwd, session->home) && !from_tree)
         return -EACCES;
 
     if (input[0] == '\0')
@@ -167,7 +181,7 @@ int tdsh_path_normalize(tdsh_session_t *session,
     {
         if (targets_forbidden_tree(session, input))
             return -EACCES;
-        if (path_is_home_or_child(input, session->home) || to_shared)
+        if (path_is_home_or_child(input, session->home) || to_tree)
         {
             if (snprintf(combined, sizeof(combined), "%s", input) >= (int)sizeof(combined))
                 return -ENAMETOOLONG;
