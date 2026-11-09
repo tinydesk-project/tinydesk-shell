@@ -1233,7 +1233,7 @@ static int ssh_start(uint16_t port)
         printf("ssh: previous server is still shutting down.\n");
         return 1;
     }
-    if (!tdsh_network_is_online())
+    if (!tdsh_network_is_reachable())
     {
         printf("ssh: no network interface is connected.\n");
         return 1;

@@ -196,6 +196,43 @@ int tdsh_wifi_forget(const char *ssid, const char *user);  /* -2: not allowed */
 int tdsh_wifi_connect_saved(const char *ssid, const char *user); /* 0 = connected */
 int tdsh_wifi_disconnect_now(void);
 
+/* The access point (STA+AP, `wifiap`): the board's own Wi-Fi network,
+ * 192.168.4.1, for Telnet and SSH when no other network is there. OFF:
+ * never; ON: always; AUTO: up after 20 s without a network, down a minute
+ * after one is back and no client is connected. A new board gets the name
+ * TinyDesk-XXXX (from its MAC) and a random password of its own. */
+typedef enum
+{
+    TDSH_WIFI_AP_OFF = 0,
+    TDSH_WIFI_AP_ON = 1,
+    TDSH_WIFI_AP_AUTO = 2
+} tdsh_wifi_ap_mode_t;
+
+typedef struct
+{
+    tdsh_wifi_ap_mode_t mode;
+    char ssid[33];       /* 1 to 32 characters */
+    char password[65];   /* WPA2: 8 to 63 characters */
+} tdsh_wifi_ap_config_t;
+
+typedef struct
+{
+    bool up;
+    char ssid[33];
+    struct
+    {
+        uint32_t addr;   /* network byte order */
+    } ip;
+    int channel;
+    int clients;
+} tdsh_wifi_ap_info_t;
+
+int tdsh_wifi_ap_get_config(tdsh_wifi_ap_config_t *out);
+/* Saved in NVS and applied within a second; -EINVAL for a bad name or
+ * password. The caller checks the user's rights (the Network right). */
+int tdsh_wifi_ap_set_config(const tdsh_wifi_ap_config_t *conf);
+int tdsh_wifi_ap_get_info(tdsh_wifi_ap_info_t *info);
+
 bool tdsh_eth_is_connected(void);
 int tdsh_eth_get_info(tdsh_eth_info_t *info);
 

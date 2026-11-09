@@ -1,5 +1,15 @@
 # Changelog
 
+## Next release
+
+* **`wifiap`: the board's own Wi-Fi access point** (STA+AP) for Telnet, SSH
+  and SFTP where there is no other network: `off`, `on`, or `auto` (up after
+  20 s without a network, down a minute after one is back with no clients).
+  Name `TinyDesk-XXXX` and a random password per board at first, kept in NVS;
+  `tdsh_wifi_ap_get_config()`, `tdsh_wifi_ap_set_config()`,
+  `tdsh_wifi_ap_get_info()`. The SSH and FTP servers start with only the
+  access point up.
+
 ## 0.3.1
 
 * **`ssl` in the PC programs:** the release workflow builds `tdsh_host` and

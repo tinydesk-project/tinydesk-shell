@@ -961,7 +961,7 @@ static int ftp_start(uint16_t port)
         return 0;
     }
 
-    if (!tdsh_network_is_online())
+    if (!tdsh_network_is_reachable())
     {
         printf("ftp: no network interface is connected.\n");
         return 1;

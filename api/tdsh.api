@@ -160,6 +160,12 @@ tdsh_espidf.h: int tdsh_wifi_save(const char *ssid, const char *password, const 
 tdsh_espidf.h: int tdsh_wifi_forget(const char *ssid, const char *user);
 tdsh_espidf.h: int tdsh_wifi_connect_saved(const char *ssid, const char *user);
 tdsh_espidf.h: int tdsh_wifi_disconnect_now(void);
+tdsh_espidf.h: typedef enum { TDSH_WIFI_AP_OFF = 0, TDSH_WIFI_AP_ON = 1, TDSH_WIFI_AP_AUTO = 2 } tdsh_wifi_ap_mode_t;
+tdsh_espidf.h: typedef struct { tdsh_wifi_ap_mode_t mode; char ssid[33]; char password[65]; } tdsh_wifi_ap_config_t;
+tdsh_espidf.h: typedef struct { bool up; char ssid[33]; struct { uint32_t addr; } ip; int channel; int clients; } tdsh_wifi_ap_info_t;
+tdsh_espidf.h: int tdsh_wifi_ap_get_config(tdsh_wifi_ap_config_t *out);
+tdsh_espidf.h: int tdsh_wifi_ap_set_config(const tdsh_wifi_ap_config_t *conf);
+tdsh_espidf.h: int tdsh_wifi_ap_get_info(tdsh_wifi_ap_info_t *info);
 tdsh_espidf.h: bool tdsh_eth_is_connected(void);
 tdsh_espidf.h: int tdsh_eth_get_info(tdsh_eth_info_t *info);
 tdsh_espidf.h: void tdsh_netmount_remove_owner(const char *owner);

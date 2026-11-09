@@ -8,6 +8,9 @@
 
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_mac.h"
+#include "esp_random.h"
+#include "esp_timer.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "esp_wifi_default.h"
@@ -80,6 +83,8 @@ static SemaphoreHandle_t s_init_mutex;
 static portMUX_TYPE s_init_mutex_guard = portMUX_INITIALIZER_UNLOCKED;
 static esp_netif_t *s_sta_netif;
 static wifi_db_t s_db;
+static esp_netif_t *s_ap_netif;   /* the access point's (below) */
+static bool s_ap_up;
 
 static esp_err_t wifi_db_save(void)
 {
@@ -851,6 +856,12 @@ esp_err_t tdsh_wifi_stop(void)
         esp_netif_destroy_default_wifi(s_sta_netif);
         s_sta_netif = NULL;
     }
+    if (s_ap_netif)
+    {
+        esp_netif_destroy_default_wifi(s_ap_netif);
+        s_ap_netif = NULL;
+    }
+    s_ap_up = false;
     if (s_events)
     {
         vEventGroupDelete(s_events);
@@ -1035,4 +1046,297 @@ int tdsh_wifi_disconnect_now(void)
     esp_err_t err = esp_wifi_disconnect();
     xEventGroupClearBits(s_events, WIFI_CONNECTED_BIT);
     return (err == ESP_OK || err == ESP_ERR_WIFI_NOT_CONNECT) ? 0 : -1;
+}
+
+/* ------------------------------------------------------------------------
+ * The access point (STA+AP): the board's own Wi-Fi network, for Telnet,
+ * SSH and the web terminal when no other network is there. Its settings
+ * (mode, name, password) are kept in NVS (WIFI_NS, "ap"); the network task
+ * applies the mode every second (tdsh_wifi_ap_policy). It shares the
+ * station's channel, so it moves when the station joins a network.
+ * ---------------------------------------------------------------------- */
+
+#define AP_KEY         "ap"
+#define AP_IDLE_MS     60000   /* auto: back off this long after a network and no clients */
+#define AP_OFFLINE_MS  20000   /* auto: up after this long without a network */
+#define AP_MAX_CLIENTS 4
+
+typedef struct
+{
+    uint8_t mode;   /* tdsh_wifi_ap_mode_t */
+    char ssid[33];
+    char password[65];
+} ap_conf_t;
+
+static ap_conf_t s_ap;
+static bool s_ap_loaded;
+static int64_t s_offline_since, s_idle_since;
+
+static void ap_defaults(void)
+{
+    uint8_t mac[6] = {0};
+    esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
+    snprintf(s_ap.ssid, sizeof(s_ap.ssid), "TinyDesk-%02X%02X", mac[4], mac[5]);
+    /* A password of its own for every board (no shared default), shown by
+     * `wifiap` and the Network app to those with the Network right. */
+    static const char letters[] = "abcdefghjkmnpqrstuvwxyz23456789";
+    for (int i = 0; i < 10; i++)
+        s_ap.password[i] = letters[esp_random() % (sizeof(letters) - 1)];
+    s_ap.password[10] = '\0';
+    s_ap.mode = TDSH_WIFI_AP_OFF;
+}
+
+static void ap_load(void)
+{
+    if (s_ap_loaded)
+        return;
+    s_ap_loaded = true;
+    nvs_handle_t h;
+    size_t n = sizeof(s_ap);
+    bool ok = false;
+    if (nvs_open(WIFI_NS, NVS_READONLY, &h) == ESP_OK)
+    {
+        ok = nvs_get_blob(h, AP_KEY, &s_ap, &n) == ESP_OK && n == sizeof(s_ap) && s_ap.ssid[0];
+        nvs_close(h);
+    }
+    if (!ok)
+    {
+        ap_defaults();
+        nvs_handle_t w;
+        if (nvs_open(WIFI_NS, NVS_READWRITE, &w) == ESP_OK)
+        {
+            nvs_set_blob(w, AP_KEY, &s_ap, sizeof(s_ap));
+            nvs_commit(w);
+            nvs_close(w);
+        }
+    }
+    s_ap.ssid[sizeof(s_ap.ssid) - 1] = '\0';
+    s_ap.password[sizeof(s_ap.password) - 1] = '\0';
+}
+
+static esp_err_t ap_start(void)
+{
+    esp_err_t err = tdsh_wifi_init();
+    if (err != ESP_OK)
+        return err;
+    if (!s_ap_netif)
+    {
+        s_ap_netif = esp_netif_create_default_wifi_ap();
+        if (!s_ap_netif)
+            return ESP_FAIL;
+    }
+    wifi_config_t cfg = {0};
+    memcpy(cfg.ap.ssid, s_ap.ssid, strlen(s_ap.ssid));
+    cfg.ap.ssid_len = (uint8_t)strlen(s_ap.ssid);
+    memcpy(cfg.ap.password, s_ap.password, strlen(s_ap.password));
+    cfg.ap.authmode = WIFI_AUTH_WPA2_PSK;
+    cfg.ap.max_connection = AP_MAX_CLIENTS;
+    cfg.ap.pmf_cfg.capable = true;
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (err == ESP_OK)
+        err = esp_wifi_set_config(WIFI_IF_AP, &cfg);
+    if (err == ESP_OK)
+    {
+        s_ap_up = true;
+        s_idle_since = 0;
+        ESP_LOGI(TAG, "access point %s is up (192.168.4.1)", s_ap.ssid);
+    }
+    return err;
+}
+
+static void ap_stop(void)
+{
+    if (!s_ap_up)
+        return;
+    s_ap_up = false;
+    if (s_wifi_started)
+        esp_wifi_set_mode(WIFI_MODE_STA);
+    ESP_LOGI(TAG, "access point %s is down", s_ap.ssid);
+}
+
+bool tdsh_wifi_ap_is_up(void)
+{
+    return s_ap_up;
+}
+
+static int ap_clients(void)
+{
+    wifi_sta_list_t list;
+    if (!s_ap_up || esp_wifi_ap_get_sta_list(&list) != ESP_OK)
+        return 0;
+    return list.num;
+}
+
+void tdsh_wifi_ap_policy(bool online, bool wifi_allowed)
+{
+    ap_load();
+    int64_t now = esp_timer_get_time() / 1000;
+    if (!wifi_allowed || !s_wifi_started)
+    {
+        /* LAN only, or Wi-Fi stopped (tdsh_wifi_stop): no access point. */
+        if (!wifi_allowed && s_ap_up)
+            ap_stop();
+        if (!wifi_allowed || s_ap.mode == TDSH_WIFI_AP_OFF)
+            return;
+    }
+    bool want = s_ap_up;
+    switch (s_ap.mode)
+    {
+    case TDSH_WIFI_AP_ON:
+        want = true;
+        break;
+    case TDSH_WIFI_AP_AUTO:
+        if (online)
+        {
+            s_offline_since = 0;
+            if (s_ap_up && ap_clients() == 0)
+            {
+                if (!s_idle_since)
+                    s_idle_since = now;
+                if (now - s_idle_since >= AP_IDLE_MS)
+                    want = false;
+            }
+            else
+                s_idle_since = 0;
+        }
+        else
+        {
+            if (!s_offline_since)
+                s_offline_since = now;
+            if (now - s_offline_since >= AP_OFFLINE_MS)
+                want = true;
+        }
+        break;
+    default:
+        want = false;
+        break;
+    }
+    if (want && !s_ap_up)
+    {
+        esp_err_t err = ap_start();
+        if (err != ESP_OK)
+            ESP_LOGW(TAG, "access point: %s", esp_err_to_name(err));
+    }
+    else if (!want && s_ap_up)
+        ap_stop();
+}
+
+int tdsh_wifi_ap_get_config(tdsh_wifi_ap_config_t *out)
+{
+    if (!out)
+        return -EINVAL;
+    ap_load();
+    memset(out, 0, sizeof(*out));
+    out->mode = (tdsh_wifi_ap_mode_t)s_ap.mode;
+    snprintf(out->ssid, sizeof(out->ssid), "%s", s_ap.ssid);
+    snprintf(out->password, sizeof(out->password), "%s", s_ap.password);
+    return 0;
+}
+
+int tdsh_wifi_ap_set_config(const tdsh_wifi_ap_config_t *conf)
+{
+    if (!conf || conf->mode > TDSH_WIFI_AP_AUTO)
+        return -EINVAL;
+    size_t sl = strlen(conf->ssid), pl = strlen(conf->password);
+    if (sl < 1 || sl > 32 || pl < 8 || pl > 63)
+        return -EINVAL;   /* WPA2: 8 to 63 characters */
+    ap_load();
+    bool changed = strcmp(s_ap.ssid, conf->ssid) || strcmp(s_ap.password, conf->password);
+    s_ap.mode = (uint8_t)conf->mode;
+    snprintf(s_ap.ssid, sizeof(s_ap.ssid), "%s", conf->ssid);
+    snprintf(s_ap.password, sizeof(s_ap.password), "%s", conf->password);
+    nvs_handle_t h;
+    if (nvs_open(WIFI_NS, NVS_READWRITE, &h) != ESP_OK)
+        return -EIO;
+    esp_err_t err = nvs_set_blob(h, AP_KEY, &s_ap, sizeof(s_ap));
+    if (err == ESP_OK)
+        err = nvs_commit(h);
+    nvs_close(h);
+    if (changed && s_ap_up)
+        ap_start();   /* the new name and password at once */
+    s_offline_since = s_idle_since = 0;
+    tdsh_network_kick();
+    return err == ESP_OK ? 0 : -EIO;
+}
+
+int tdsh_wifi_ap_get_info(tdsh_wifi_ap_info_t *info)
+{
+    if (!info)
+        return -EINVAL;
+    ap_load();
+    memset(info, 0, sizeof(*info));
+    info->up = s_ap_up;
+    snprintf(info->ssid, sizeof(info->ssid), "%s", s_ap.ssid);
+    if (!s_ap_up)
+        return 0;
+    info->clients = ap_clients();
+    esp_netif_ip_info_t ip;
+    if (s_ap_netif && esp_netif_get_ip_info(s_ap_netif, &ip) == ESP_OK)
+        info->ip.addr = ip.ip.addr;
+    uint8_t primary = 0;
+    wifi_second_chan_t second;
+    if (esp_wifi_get_channel(&primary, &second) == ESP_OK)
+        info->channel = primary;
+    return 0;
+}
+
+static const char *ap_mode_name(int mode)
+{
+    return mode == TDSH_WIFI_AP_ON ? "on" : mode == TDSH_WIFI_AP_AUTO ? "auto"
+                                                                      : "off";
+}
+
+int tdsh_cmd_wifiap(tdsh_session_t *session, int argc, char **argv)
+{
+    (void)session;
+    tdsh_wifi_ap_config_t conf;
+    tdsh_wifi_ap_get_config(&conf);
+    if (argc == 1 || (argc == 2 && !strcmp(argv[1], "status")))
+    {
+        tdsh_wifi_ap_info_t info;
+        tdsh_wifi_ap_get_info(&info);
+        printf("Access point: %s (%s)\n", info.up ? "up" : "down", ap_mode_name(conf.mode));
+        printf("  name:      %s\n", conf.ssid);
+        printf("  password:  %s\n", conf.password);
+        if (info.up)
+        {
+            uint8_t *a = (uint8_t *)&info.ip.addr;
+            printf("  address:   %u.%u.%u.%u, channel %d, %d client%s\n", a[0], a[1], a[2], a[3], info.channel,
+                   info.clients, info.clients == 1 ? "" : "s");
+        }
+        if (conf.mode == TDSH_WIFI_AP_AUTO)
+            printf("  auto: up after %d s without a network, down %d s after one is back with no clients\n",
+                   AP_OFFLINE_MS / 1000, AP_IDLE_MS / 1000);
+        return 0;
+    }
+    if (argc == 2 && (!strcmp(argv[1], "on") || !strcmp(argv[1], "off") || !strcmp(argv[1], "auto")))
+        conf.mode = !strcmp(argv[1], "on") ? TDSH_WIFI_AP_ON : !strcmp(argv[1], "auto") ? TDSH_WIFI_AP_AUTO
+                                                                                        : TDSH_WIFI_AP_OFF;
+    else if (argc == 3 && !strcmp(argv[1], "name"))
+        snprintf(conf.ssid, sizeof(conf.ssid), "%s", argv[2]);
+    else if (argc == 3 && !strcmp(argv[1], "password"))
+        snprintf(conf.password, sizeof(conf.password), "%s", argv[2]);
+    else
+    {
+        printf("usage:\n"
+               "  wifiap [status]          the access point's state, name and password\n"
+               "  wifiap on|off|auto       always, never, or when there is no network\n"
+               "  wifiap name <ssid>       its network name (1 to 32 characters)\n"
+               "  wifiap password <pw>     its WPA2 password (8 to 63 characters)\n"
+               "Clients get 192.168.4.x; the board is 192.168.4.1 (Telnet, SSH).\n");
+        return 2;
+    }
+    int rc = tdsh_wifi_ap_set_config(&conf);
+    if (rc == -EINVAL)
+    {
+        printf("wifiap: the name must be 1 to 32 characters, the password 8 to 63\n");
+        return 1;
+    }
+    if (rc)
+    {
+        printf("wifiap: could not save the settings\n");
+        return 1;
+    }
+    printf("Access point %s: %s (it applies within a second)\n", ap_mode_name(conf.mode), conf.ssid);
+    return 0;
 }

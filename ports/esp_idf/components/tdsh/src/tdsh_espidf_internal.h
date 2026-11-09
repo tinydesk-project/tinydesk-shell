@@ -39,6 +39,15 @@ int tdsh_cmd_networks(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiscan(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wificonnect(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifidisconnect(tdsh_session_t *session, int argc, char **argv);
+int tdsh_cmd_wifiap(tdsh_session_t *session, int argc, char **argv);
+/* The access point's mode applied, every second by the network task. */
+void tdsh_wifi_ap_policy(bool online, bool wifi_allowed);
+/* Make the network task apply its policy at once. */
+void tdsh_network_kick(void);
+/* Clients can reach the board: a network, or its access point. Servers
+ * (SSH, FTP) need this; time sync and the like need tdsh_network_is_online. */
+bool tdsh_network_is_reachable(void);
+bool tdsh_wifi_ap_is_up(void);
 int tdsh_cmd_wifiadd(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiremove(tdsh_session_t *session, int argc, char **argv);
 esp_err_t tdsh_eth_start(void);

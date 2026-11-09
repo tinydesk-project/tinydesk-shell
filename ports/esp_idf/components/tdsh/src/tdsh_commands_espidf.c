@@ -279,6 +279,8 @@ static const tdsh_command_t s_network_commands[] = {
     {"wifiscan", "wifiscan", "Scan and list available Wi-Fi networks", tdsh_cmd_wifiscan, 0},
     {"wificonnect", "wificonnect [saved_ssid]", "Connect to a saved network", tdsh_cmd_wificonnect, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
     {"wifidisconnect", "wifidisconnect", "Disconnect station Wi-Fi", tdsh_cmd_wifidisconnect, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
+    {"wifiap", "wifiap [status|on|off|auto|name <ssid>|password <pw>]", "The board's own Wi-Fi access point",
+     tdsh_cmd_wifiap, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
     {"wifiadd", "wifiadd <ssid> [password]", "Save a Wi-Fi network in NVS", tdsh_cmd_wifiadd, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
     {"wifiremove", "wifiremove <ssid ...>", "Remove saved Wi-Fi networks", tdsh_cmd_wifiremove, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},
     {"lan", "lan <status|config|enable|disable|dhcp|static|dns|hw|poll> ...", "Configure W6100 Ethernet", tdsh_cmd_lan, TDSH_CMD_RIGHT(TDSH_RIGHT_NETWORK)},

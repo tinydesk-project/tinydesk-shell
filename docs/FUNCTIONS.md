@@ -238,6 +238,7 @@ int tdsh_cmd_networks(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiscan(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wificonnect(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifidisconnect(tdsh_session_t *session, int argc, char **argv);
+int tdsh_cmd_wifiap(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiadd(tdsh_session_t *session, int argc, char **argv);
 int tdsh_cmd_wifiremove(tdsh_session_t *session, int argc, char **argv);
 esp_err_t tdsh_eth_start(void);
@@ -339,6 +340,7 @@ extern const char td_py_help_text[];
 | wifiscan | wifiscan | Scan and list available Wi-Fi networks |
 | wificonnect | wificonnect [saved_ssid] | Connect to a saved network |
 | wifidisconnect | wifidisconnect | Disconnect station Wi-Fi |
+| wifiap | wifiap [status\|on\|off\|auto\|name <ssid>\|password <pw>] | The board's own Wi-Fi access point |
 | wifiadd | wifiadd <ssid> [password] | Save a Wi-Fi network in NVS |
 | wifiremove | wifiremove <ssid ...> | Remove saved Wi-Fi networks |
 | lan | lan <status\|config\|enable\|disable\|dhcp\|static\|dns\|hw\|poll> ... | Configure W6100 Ethernet |

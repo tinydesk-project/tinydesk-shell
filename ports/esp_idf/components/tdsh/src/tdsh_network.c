@@ -157,6 +157,11 @@ bool tdsh_network_is_online(void)
     return tdsh_eth_is_connected() || tdsh_wifi_is_connected();
 }
 
+bool tdsh_network_is_reachable(void)
+{
+    return tdsh_network_is_online() || tdsh_wifi_ap_is_up();
+}
+
 static void select_default_route(void)
 {
     esp_netif_t *eth = (esp_netif_t *)tdsh_eth_netif();
@@ -304,6 +309,7 @@ static void network_task(void *arg)
         select_default_route();
 
         bool online = tdsh_network_is_online();
+        tdsh_wifi_ap_policy(online, allow_wifi);   /* the access point (wifiap) */
         if (online && !was_online)
         {
             tdsh_time_sync_start();
@@ -313,6 +319,11 @@ static void network_task(void *arg)
         s_policy_kick = false;
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
+}
+
+void tdsh_network_kick(void)
+{
+    s_policy_kick = true;
 }
 
 esp_err_t tdsh_network_init(void)
