@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+* **`ssl` in the PC programs:** the release workflow builds `tdsh_host` and
+  `tdsh_host.exe` with mbedTLS 3.6 (0.3.0's had no `ssl`: host.cmake only
+  finds ESP-IDF's copy, which the release machines don't have). New CMake
+  option `TDSH_REQUIRE_TLS` stops a build without it; releases set it.
+* Tests keep their `assert` checks in Release builds (`NDEBUG`).
+
 ## 0.3.0
 
 * **Flash layout on the ESP32 and ESP32-S3 (`projects/esp32`,

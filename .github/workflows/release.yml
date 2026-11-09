@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # ssl in py on the PC programs (the firmware uses ESP-IDF's copy).
+  MBEDTLS_TAG: v3.6.7
+
 jobs:
   checks:
     uses: ./.github/workflows/host.yml
@@ -23,10 +27,13 @@ jobs:
     runs-on: ubuntu-22.04          # an older glibc: the program runs on more distributions
     steps:
       - uses: actions/checkout@v4
+      - name: mbedTLS for ssl in py
+        run: git clone --quiet --depth 1 --branch "$MBEDTLS_TAG" --recurse-submodules --shallow-submodules https://github.com/Mbed-TLS/mbedtls.git ../mbedtls-src
       - name: Build and test the host program
         run: |
           sudo apt-get install -y ninja-build
-          cmake -S . -B build-host -G Ninja -DTDSH_BUILD_HOST=ON -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build-host -G Ninja -DTDSH_BUILD_HOST=ON -DCMAKE_BUILD_TYPE=Release \
+            -DTDSH_REQUIRE_TLS=ON -DTDSH_MBEDTLS_DIR="$(cd ../mbedtls-src && pwd)"
           cmake --build build-host
           ctest --test-dir build-host --output-on-failure --no-tests=error
           strip build-host/tdsh_host
@@ -44,8 +51,10 @@ jobs:
         shell: bash
         run: |
           choco install ninja -y
+          git clone --quiet --depth 1 --branch "$MBEDTLS_TAG" --recurse-submodules --shallow-submodules https://github.com/Mbed-TLS/mbedtls.git ../mbedtls-src
           cmake -S . -B build-host -G Ninja -DCMAKE_C_COMPILER=gcc -DTDSH_BUILD_HOST=ON \
-            -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS=-static
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS=-static \
+            -DTDSH_REQUIRE_TLS=ON -DTDSH_MBEDTLS_DIR="$(cd ../mbedtls-src && pwd -W)"
           cmake --build build-host
           ctest --test-dir build-host --output-on-failure --no-tests=error
           strip build-host/tdsh_host.exe

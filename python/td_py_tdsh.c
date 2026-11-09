@@ -2,7 +2,7 @@
  * td_py_tdsh.c - the `tdsh` module: the shell from a script.
  *
  *   tdsh.shell(line)    run a shell command line; returns its exit status
- *   tdsh.version()      the shell's version, "0.3.0"
+ *   tdsh.version()      the shell's version, "0.3.1"
  *   tdsh.getvar(name)   a shell variable of the session (VIRTUAL_ENV, ...), or None
  *   tdsh.user()         the session's user
  *   tdsh.home()         the user's home directory (a shell path)

@@ -7,6 +7,14 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
+## New in 0.3.1
+
+* **`ssl` in the Linux and Windows programs:** 0.3.0's `tdsh_host` and
+  `tdsh_host.exe` were built without TLS, so `py` had no `ssl` there (no
+  HTTPS, MQTT over TLS or `upip`). They have it now, and a release build
+  stops if it would leave it out (`TDSH_REQUIRE_TLS`). The firmware had it
+  already; nothing else changed.
+
 ## New in 0.3.0
 
 * **`py`, MicroPython, in the shell itself** (#6): scripts, the prompt,
