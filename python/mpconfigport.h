@@ -12,6 +12,19 @@
 
 #include <stdint.h>
 
+/* The heap grows while a script runs: it starts small, and more areas come
+ * from the system heap only when a collection does not free enough, never
+ * past the floor td_py.c keeps for the system (gc_get_max_new_split()).
+ * Empty areas go back. Without PSRAM this keeps Wi-Fi and the desktop
+ * working however big the script. */
+#define MICROPY_GC_SPLIT_HEAP      (1)
+#define MICROPY_GC_SPLIT_HEAP_AUTO (1)
+#include <stddef.h>
+void *td_py_alloc_area(size_t size);
+void td_py_free_area(void *area);
+#define MP_PLAT_ALLOC_HEAP(size) td_py_alloc_area(size)
+#define MP_PLAT_FREE_HEAP(ptr)   td_py_free_area(ptr)
+
 #if defined(_WIN32)
 #include <malloc.h>   /* alloca */
 #else

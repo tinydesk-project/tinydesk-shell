@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+* **`py`'s heap grows as a script needs it** (MicroPython's split heap,
+  `MICROPY_GC_SPLIT_HEAP_AUTO`). Without PSRAM it starts at 24 KB (was a
+  fixed 64 KB) and takes further areas from internal RAM only while a floor
+  stays free for the system: 48 KB with the network off, 20 KB with it up,
+  plus what the application asks for with the new `td_py_set_reserve()`
+  (TinyDesk's desktop: 12 KB for a script's windows). Empty areas go back;
+  a script that wants more gets `MemoryError` instead of starving Wi-Fi.
+  With PSRAM it starts at 512 KB as before and may grow there. `-m KB` sets
+  the starting size.
+
 ## 0.4.0
 
 * **FTP works again:** every path was refused ("550 Invalid path") since

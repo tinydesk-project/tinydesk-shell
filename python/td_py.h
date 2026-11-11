@@ -21,6 +21,11 @@ int td_py_register_shell_command(void);
  * one, a running script cannot be stopped from the keyboard. */
 void td_py_set_break_check(bool (*fn)(void));
 
+/* Boards without PSRAM: KB of internal RAM a script's heap must leave free
+ * on top of the system's share, e.g. for a desktop's link and windows (the
+ * tdui module). Without it, the script's heap takes all it may. */
+void td_py_set_reserve(unsigned (*kb)(void));
+
 /* Optional, for consoles that need them: where the prompt and input() read
  * a key (blocking; EOF at the end of input; default getchar()), and a
  * function called with true before a script or the prompt runs and false

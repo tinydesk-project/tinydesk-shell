@@ -1,5 +1,6 @@
 td_py.h: int td_py_register_shell_command(void);
 td_py.h: void td_py_set_break_check(bool (*fn)(void));
+td_py.h: void td_py_set_reserve(unsigned (*kb)(void));
 td_py.h: void td_py_set_console(int (*read_key)(void), void (*raw_mode)(bool on));
 td_py.h: tdsh_session_t *td_py_session(void);
 td_py.h: int td_py_add_cleanup(void (*fn)(void));

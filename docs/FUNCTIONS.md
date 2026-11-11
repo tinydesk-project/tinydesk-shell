@@ -278,6 +278,7 @@ int tdsh_getchar(void);
 ```c
 int td_py_register_shell_command(void);
 void td_py_set_break_check(bool (*fn)(void));
+void td_py_set_reserve(unsigned (*kb)(void));
 void td_py_set_console(int (*read_key)(void), void (*raw_mode)(bool on));
 tdsh_session_t *td_py_session(void);
 int td_py_add_cleanup(void (*fn)(void));

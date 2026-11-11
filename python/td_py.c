@@ -58,10 +58,12 @@
  * of internal RAM, and a reserve is left for the system. The reserve
  * follows the network: before Wi-Fi or Ethernet is up it must leave room to
  * start it (a scan, the driver's buffers); once it is up those buffers are
- * taken and a smaller reserve keeps it running. A 4 MB ESP32 then has a
- * small heap either way; the ESP32-C6 has its full 64 KB. */
+ * taken and a smaller reserve keeps it running. The application may add to
+ * it (td_py_set_reserve: a desktop's windows). Without PSRAM the heap
+ * starts at HEAP_RAM_START_KB and grows in areas while the reserve stays
+ * free (gc_get_max_new_split); `py -m KB` sets the starting size. */
 #define HEAP_PSRAM_KB      512
-#define HEAP_RAM_KB        64
+#define HEAP_RAM_START_KB  24   /* without PSRAM; grows on demand above the floor */
 #define HEAP_MIN_KB        16
 #define RESERVE_NET_OFF_KB 48
 #define RESERVE_NET_ON_KB  20
@@ -115,6 +117,13 @@ int td_py_add_cleanup(void (*fn)(void))
             return 0;
         }
     return -1;
+}
+
+static unsigned (*s_reserve)(void);
+
+void td_py_set_reserve(unsigned (*kb)(void))
+{
+    s_reserve = kb;
 }
 
 void td_py_set_break_check(bool (*fn)(void))
@@ -323,11 +332,59 @@ static void exec_free_all(void)
 
 /* ------------------------------------------------------------ heap */
 
+#if defined(ESP_PLATFORM)
+static bool s_heap_psram;   /* this script's heap is in PSRAM */
+static bool s_net_up;
+
+/* KB of internal RAM no script may take: the system's share (more while
+ * the network is off, so Wi-Fi can still start), plus the application's
+ * (a desktop's link and windows). */
+static unsigned floor_kb(void)
+{
+    return (s_net_up ? RESERVE_NET_ON_KB : RESERVE_NET_OFF_KB) + (s_reserve ? s_reserve() : 0);
+}
+#endif
+
+/* MicroPython's split heap: how big a new area may be, now. */
+size_t gc_get_max_new_split(void)
+{
+#if defined(ESP_PLATFORM)
+    if (s_heap_psram)
+        return heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) / 2;
+    size_t total = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    size_t floor = floor_kb() * 1024u;
+    size_t room = total > floor ? total - floor : 0;
+    return room < largest ? room : largest;
+#else
+    return 0;   /* the PC's heap is fixed and large */
+#endif
+}
+
+void *td_py_alloc_area(size_t size)
+{
+#if defined(ESP_PLATFORM)
+    return heap_caps_malloc(size, s_heap_psram ? MALLOC_CAP_SPIRAM : (MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+#else
+    return malloc(size);
+#endif
+}
+
+void td_py_free_area(void *area)
+{
+#if defined(ESP_PLATFORM)
+    heap_caps_free(area);
+#else
+    free(area);
+#endif
+}
+
 static void *heap_alloc(size_t want_kb, size_t *size)
 {
 #if defined(ESP_PLATFORM)
     size_t psram = heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM);
-    if (psram >= HEAP_MIN_KB * 1024u)
+    s_heap_psram = psram >= HEAP_MIN_KB * 1024u;
+    if (s_heap_psram)
     {
         size_t n = (want_kb ? want_kb : HEAP_PSRAM_KB) * 1024u;
         if (n > psram)
@@ -337,12 +394,14 @@ static void *heap_alloc(size_t want_kb, size_t *size)
     }
     size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     size_t total = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    size_t n = (want_kb ? want_kb : HEAP_RAM_KB) * 1024u;
+    /* Without PSRAM a script starts small; its heap grows when it needs to. */
+    size_t n = (want_kb ? want_kb : HEAP_RAM_START_KB) * 1024u;
     tdsh_wifi_info_t wifi;
     tdsh_eth_info_t eth;
-    bool net_up = (tdsh_wifi_get_info(&wifi) == 0 && wifi.initialized) ||
-                  (tdsh_eth_get_info(&eth) == 0 && eth.initialized);
-    const unsigned reserve_kb = net_up ? RESERVE_NET_ON_KB : RESERVE_NET_OFF_KB;
+    s_net_up = (tdsh_wifi_get_info(&wifi) == 0 && wifi.initialized) ||
+               (tdsh_eth_get_info(&eth) == 0 && eth.initialized);
+    const bool net_up = s_net_up;
+    const unsigned reserve_kb = floor_kb();
     size_t room = total > reserve_kb * 1024u ? total - reserve_kb * 1024u : 0;
     if (n > room)
         n = room;
