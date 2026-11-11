@@ -1,6 +1,11 @@
 # Changelog
 
-## Next release
+## 0.4.0
+
+* **FTP works again:** every path was refused ("550 Invalid path") since
+  0.3.0, because the FTP server built its session by hand, without the
+  account generation `tdsh_path_to_real()` checks; it uses
+  `tdsh_session_init()` now.
 
 * **SD card hot-plug:** with `sd.automount` (now 1 by default wherever the
   SD pins are set) a watcher mounts a card when it is inserted and unmounts

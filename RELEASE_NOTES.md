@@ -7,6 +7,21 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
+## New in 0.4.0
+
+* **`wifiap`, the board's own Wi-Fi access point** (STA+AP): off, on, or on
+  while there is no network; TinyDesk-XXXX and 192.168.4.1, a random
+  password per board at first. SSH and FTP work over it.
+* **SD card hot-plug:** a card mounts by itself when inserted and unmounts
+  when pulled out (`sd.automount`, now on wherever the pins are set; the
+  slot's card-detect switch with `sd.cd`), and gets `/sd/TinyDesk`.
+  Accounts with the Shared right use `/sd` like `/shared`.
+
+**Fixes**
+
+* FTP answered "550 Invalid path" to everything since 0.3.0: its session
+  lacked the account generation the shell checks.
+
 ## New in 0.3.1
 
 * **`ssl` in the Linux and Windows programs:** 0.3.0's `tdsh_host` and

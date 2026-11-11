@@ -113,18 +113,12 @@ static int recv_line(int fd, char *buf, size_t size)
     return (int)n;
 }
 
+/* A session for the logged-in user, as the shell makes one: with the
+ * account's generation, without which every path is refused (550). */
 static void ftp_fake_session(const ftp_client_t *c, tdsh_session_t *s)
 {
-    memset(s, 0, sizeof(*s));
-    snprintf(s->username, sizeof(s->username), "%s", c->username[0] ? c->username : "root");
-    if (strcmp(s->username, "root") == 0)
-    {
-        snprintf(s->home, sizeof(s->home), "/root");
-    }
-    else
-    {
-        snprintf(s->home, sizeof(s->home), "/home/%s", s->username);
-    }
+    if (tdsh_session_init(s, c->username[0] ? c->username : "root", false) != 0)
+        memset(s, 0, sizeof(*s));   /* no user: tdsh_path_to_real refuses it */
     snprintf(s->cwd, sizeof(s->cwd), "%s", c->cwd);
 }
 
