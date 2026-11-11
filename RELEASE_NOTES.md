@@ -7,6 +7,15 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
+## New in 0.5.0
+
+* **Python's heap grows as a script needs it.** On boards without PSRAM
+  (ESP32-C6, 4 MB ESP32) it starts at 24 KB and takes more internal RAM only
+  while a floor stays free for Wi-Fi and the application, so a big script
+  gets `MemoryError` instead of starving the network. Applications reserve
+  their share with `td_py_set_reserve()`. With PSRAM it starts at 512 KB as
+  before.
+
 ## New in 0.4.0
 
 * **`wifiap`, the board's own Wi-Fi access point** (STA+AP): off, on, or on

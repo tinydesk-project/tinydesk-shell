@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 * **`py`'s heap grows as a script needs it** (MicroPython's split heap,
   `MICROPY_GC_SPLIT_HEAP_AUTO`). Without PSRAM it starts at 24 KB (was a
