@@ -335,13 +335,14 @@ static void exec_free_all(void)
 #if defined(ESP_PLATFORM)
 static bool s_heap_psram;   /* this script's heap is in PSRAM */
 static bool s_net_up;
+static bool s_tight;   /* network off, but too little RAM to keep room to start it */
 
 /* KB of internal RAM no script may take: the system's share (more while
  * the network is off, so Wi-Fi can still start), plus the application's
  * (a desktop's link and windows). */
 static unsigned floor_kb(void)
 {
-    return (s_net_up ? RESERVE_NET_ON_KB : RESERVE_NET_OFF_KB) + (s_reserve ? s_reserve() : 0);
+    return (s_net_up || s_tight ? RESERVE_NET_ON_KB : RESERVE_NET_OFF_KB) + (s_reserve ? s_reserve() : 0);
 }
 #endif
 
@@ -401,8 +402,20 @@ static void *heap_alloc(size_t want_kb, size_t *size)
     s_net_up = (tdsh_wifi_get_info(&wifi) == 0 && wifi.initialized) ||
                (tdsh_eth_get_info(&eth) == 0 && eth.initialized);
     const bool net_up = s_net_up;
-    const unsigned reserve_kb = floor_kb();
+    s_tight = false;
+    unsigned reserve_kb = floor_kb();
     size_t room = total > reserve_kb * 1024u ? total - reserve_kb * 1024u : 0;
+    if (!net_up && room < HEAP_MIN_KB * 1024u && largest >= HEAP_MIN_KB * 1024u)
+    {
+        /* A board without PSRAM (4 MB ESP32) cannot keep room to start
+         * Wi-Fi and run Python: run it, and leave the network's running
+         * reserve only. Starting Wi-Fi may fail until the script ends. */
+        s_tight = true;
+        reserve_kb = floor_kb();
+        room = total > reserve_kb * 1024u ? total - reserve_kb * 1024u : 0;
+        if (room >= HEAP_MIN_KB * 1024u)
+            printf("py: low RAM: Wi-Fi and Ethernet cannot be started while this script runs\n");
+    }
     if (n > room)
         n = room;
     if (n > largest)
@@ -412,7 +425,7 @@ static void *heap_alloc(size_t want_kb, size_t *size)
         printf("py: not enough RAM: %u KB free (largest block %u KB); Python needs %u KB and leaves %u KB "
                "for the system%s\n",
                (unsigned)(total / 1024), (unsigned)(largest / 1024), HEAP_MIN_KB, reserve_kb,
-               net_up ? "" : " (room to start Wi-Fi)");
+               net_up || s_tight ? "" : " (room to start Wi-Fi)");
         return NULL;
     }
     *size = n & ~(size_t)15;

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+* **Fix:** `py` did not start when the floor with the network off (48 KB
+  plus the application's reserve) left less than 16 KB, as on the 4 MB
+  ESP32 under TinyDesk's desktop (59 KB free). It now falls back to the
+  floor of a running network (20 KB plus the application's) and prints
+  `py: low RAM: Wi-Fi and Ethernet cannot be started while this script
+  runs`.
+
 ## 0.5.0
 
 * **`py`'s heap grows as a script needs it** (MicroPython's split heap,
