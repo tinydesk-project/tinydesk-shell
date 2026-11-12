@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.1
 
 * **Fix:** `py` did not start when the floor with the network off (48 KB
   plus the application's reserve) left less than 16 KB, as on the 4 MB

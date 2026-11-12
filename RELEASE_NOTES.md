@@ -7,6 +7,13 @@ also runs on a PC. It is the shell inside
 This release is a developer preview: expect rough edges, and please report
 what breaks.
 
+## New in 0.5.1
+
+**Fix:** `py` did not start when keeping room to start the network left
+less than 16 KB for Python (the 4 MB ESP32 under TinyDesk's desktop). It now
+runs with the reserve of a running network and says that Wi-Fi and
+Ethernet cannot be started while the script runs.
+
 ## New in 0.5.0
 
 * **Python's heap grows as a script needs it.** On boards without PSRAM
